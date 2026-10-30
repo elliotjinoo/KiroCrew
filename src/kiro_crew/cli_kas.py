@@ -68,6 +68,16 @@ def add_kas_parser(parser: argparse.ArgumentParser) -> None:
     install.add_argument(
         "--force", action="store_true", help="Replace an already-installed copy of that version"
     )
+    install.add_argument(
+        "--if-in-use",
+        action="store_true",
+        help=(
+            "Install only when this install runs Kiro Crew's own engine "
+            "(agent.kas_bundle is on), or refresh one already on disk (a failure "
+            "then only prints the retry); otherwise do nothing. Every update runs "
+            "this from the new release"
+        ),
+    )
 
     sub.add_parser("status", help="Show the pinned engine, what is installed, and the route")
     remove = sub.add_parser("remove", help="Delete installed engine versions")
@@ -109,7 +119,81 @@ def _already_installed(version: str, force: bool) -> kas_bundle.InstalledKasBund
     return kas_bundle.installed_bundle(root=kas_bundle.kas_engines_root(), version=version)
 
 
+#: ``install --if-in-use`` needs the engine: the bundle route runs it.
+ENGINE_REQUIRED = "required"
+#: ``install --if-in-use`` only refreshes an engine already on disk; a failure
+#: must not stop an update (the relay route runs kiro-cli, not the engine).
+ENGINE_OPTIONAL = "optional"
+
+
+def _bundle_switch_on() -> bool:
+    """Whether ``agent.kas_bundle`` is on, so any KAS session runs Crew's own engine.
+
+    Deliberately not ``kas_bundle_route()``, which also asks that the DEFAULT
+    backend be KAS: with the switch on, a member route (``agent.member_acp_backend``),
+    a mate's own harness pin or a spawn that asks for KAS runs the engine too, so
+    an update must not switch to a release whose engine is missing for them. An
+    unreadable config reads as off, the answer every bundle-route reader gives.
+    """
+    from kiro_crew.config.loader import KiroCrewConfig
+
+    try:
+        return bool(KiroCrewConfig.load().agent.kas_bundle)
+    except Exception:  # noqa: BLE001 - unreadable config is the relay route
+        return False
+
+
+def _engine_need() -> str | None:
+    """How much this install needs the pinned engine, for ``install --if-in-use``.
+
+    :data:`ENGINE_REQUIRED` when ``agent.kas_bundle`` is on (:func:`_bundle_switch_on`):
+    every KAS session, the default's or a member's or a mate's, runs the engine,
+    so an update without it is refused. :data:`ENGINE_OPTIONAL` when the switch
+    is off but some engine version is under ``<data home>/engines/kas`` (the
+    installers lay one down on every default install): the update tries to bring
+    the new pin along, and any failure only prints the retry. ``None`` otherwise.
+    An engines directory that cannot be listed counts as no engine.
+    """
+    if _bundle_switch_on():
+        return ENGINE_REQUIRED
+    try:
+        if kas_bundle.installed_versions():
+            return ENGINE_OPTIONAL
+    except OSError:
+        pass
+    return None
+
+
 def _install(args: argparse.Namespace) -> int:
+    if not getattr(args, "if_in_use", False):
+        return _install_now(args)
+    need = _engine_need()
+    if need is None:
+        print("The KAS engine bundle is not in use on this install; nothing to install.")
+        return 0
+    if need == ENGINE_REQUIRED:
+        return _install_now(args)
+    # The switch is off, so nothing runs the engine: whatever stops the refresh
+    # (a refused fetch, a full or unwritable disk) is reported, never an update
+    # failure.
+    try:
+        rc = _install_now(args)
+    except Exception as exc:  # noqa: BLE001 - an optional refresh never fails the update
+        print(f"❌ {exc}", file=sys.stderr)
+        rc = 1
+    if rc == 0:
+        return 0
+    from kiro_crew.platform.release_apply import ENGINE_OPTIONAL_FAILED_EXIT
+
+    print(
+        "⚠  The KAS engine for this release was not installed; agent.kas_bundle is off, "
+        "so the update goes on. Retry with: kirocrew kas install",
+        file=sys.stderr,
+    )
+    return ENGINE_OPTIONAL_FAILED_EXIT
+
+
+def _install_now(args: argparse.Namespace) -> int:
     from kiro_crew.config.loader import KiroCrewConfig
 
     try:

@@ -477,3 +477,171 @@ class TestRemove:
         monkeypatch.setattr(kas_bundle, "kas_engines_root", lambda: tmp_path / "absent")
         assert cli_kas.kas_cmd(self._args(yes=True)) == 0
         assert "nothing installed" in capsys.readouterr().out
+
+
+class TestInstallIfInUse:
+    """``install --if-in-use``: what every update runs from the new release.
+
+    The install goes ahead when ``agent.kas_bundle`` is on (a failure fails) or an
+    engine version is already on disk (a failure exits the optional code and names
+    the retry, so the update still switches), and is a quiet success otherwise. The relay route alone -- KAS selected, ``agent.kas_bundle`` off, the
+    default -- installs nothing, so a host that cannot run the engine keeps updating.
+    """
+
+    def _args(self, **over) -> argparse.Namespace:
+        base = dict(
+            kas_action="install",
+            from_dir=None,
+            version=None,
+            url=None,
+            unpinned=False,
+            force=False,
+            if_in_use=True,
+        )
+        base.update(over)
+        return argparse.Namespace(**base)
+
+    def test_the_flag_reaches_the_namespace(self):
+        assert _parse("install", "--if-in-use").if_in_use is True
+        assert _parse("install").if_in_use is False
+
+    def test_the_relay_route_with_no_engine_on_disk_installs_nothing(
+        self, cfg, monkeypatch, capsys
+    ):
+        """The default config: KAS selected, the bundle off, nothing installed."""
+        monkeypatch.setattr(cli_kas, "_bundle_switch_on", lambda: False)
+        monkeypatch.setattr(kas_bundle, "installed_versions", lambda: [])
+        monkeypatch.setattr(
+            kas_bundle, "fetch_manifest", lambda *a, **k: pytest.fail("fetched on the relay route")
+        )
+        assert cli_kas.kas_cmd(self._args()) == 0
+        assert "not in use" in capsys.readouterr().out
+
+    @pytest.mark.parametrize(
+        ("route", "on_disk"),
+        [(True, []), (False, ["0.66.33"])],
+        ids=["bundle-route", "engine-on-disk"],
+    )
+    def test_the_engine_in_use_installs_the_pin(
+        self, cfg, host, tmp_path, monkeypatch, capsys, route, on_disk
+    ):
+        monkeypatch.setattr(cli_kas, "_bundle_switch_on", lambda: route)
+        monkeypatch.setattr(kas_bundle, "installed_versions", lambda: on_disk)
+        monkeypatch.setattr(kas_bundle, "kas_engines_root", lambda: tmp_path / "engines")
+        fetched: list[str] = []
+
+        def fake_fetch(base, *, version, sha256):
+            fetched.append(version)
+            return kas_bundle.parse_manifest(_manifest_doc()), f"{base}/kas/{version}/manifest.json"
+
+        monkeypatch.setattr(kas_bundle, "fetch_manifest", fake_fetch)
+        monkeypatch.setattr(
+            kas_bundle, "install_bundle", lambda *a, **k: _installed(tmp_path / "engines")
+        )
+        assert cli_kas.kas_cmd(self._args()) == 0
+        assert fetched == [_PIN]
+
+    @pytest.mark.parametrize(
+        ("route", "versions", "need"),
+        [
+            (True, [], cli_kas.ENGINE_REQUIRED),
+            (True, ["0.66.33"], cli_kas.ENGINE_REQUIRED),
+            (False, ["0.66.33"], cli_kas.ENGINE_OPTIONAL),
+            (False, [], None),
+        ],
+        ids=["route-on", "route-on-engine-on-disk", "engine-only-on-disk", "neither"],
+    )
+    def test_the_need_follows_the_route_first(self, monkeypatch, route, versions, need):
+        monkeypatch.setattr(cli_kas, "_bundle_switch_on", lambda: route)
+        monkeypatch.setattr(kas_bundle, "installed_versions", lambda: versions)
+        assert cli_kas._engine_need() == need
+
+    @pytest.mark.parametrize(("route", "need"), [(True, cli_kas.ENGINE_REQUIRED), (False, None)])
+    def test_an_unlistable_engines_directory_leaves_the_route_to_decide(
+        self, monkeypatch, route, need
+    ):
+        def unreadable():
+            raise PermissionError(13, "Permission denied")
+
+        monkeypatch.setattr(kas_bundle, "installed_versions", unreadable)
+        monkeypatch.setattr(cli_kas, "_bundle_switch_on", lambda: route)
+        assert cli_kas._engine_need() == need
+
+    def test_an_unreadable_config_reads_as_the_switch_off(self, monkeypatch):
+        """An unreadable config is the relay route here, as for every bundle reader."""
+
+        def broken(cls):
+            raise ValueError("config.json is not JSON")
+
+        monkeypatch.setattr("kiro_crew.config.loader.KiroCrewConfig.load", classmethod(broken))
+        monkeypatch.setattr(kas_bundle, "installed_versions", lambda: [])
+        assert cli_kas._engine_need() is None
+
+    def _failing_download(self, monkeypatch):
+        def refused(*_a, **_k):
+            raise kas_bundle.KasBundleError("manifest fetch refused: HTTP 403")
+
+        monkeypatch.setattr(kas_bundle, "fetch_manifest", refused)
+
+    def test_a_failed_refresh_of_an_engine_only_on_disk_does_not_fail(
+        self, cfg, host, tmp_path, monkeypatch, capsys
+    ):
+        """Route off, engine on disk, download fails: the update must still switch."""
+        from kiro_crew.platform.release_apply import ENGINE_OPTIONAL_FAILED_EXIT
+
+        monkeypatch.setattr(cli_kas, "_bundle_switch_on", lambda: False)
+        monkeypatch.setattr(kas_bundle, "installed_versions", lambda: ["0.66.33"])
+        monkeypatch.setattr(kas_bundle, "kas_engines_root", lambda: tmp_path / "engines")
+        self._failing_download(monkeypatch)
+        assert cli_kas.kas_cmd(self._args()) == ENGINE_OPTIONAL_FAILED_EXIT
+        err = capsys.readouterr().err
+        assert "HTTP 403" in err
+        assert "Retry with: kirocrew kas install" in err
+
+    def test_a_failed_install_on_the_bundle_route_still_fails(
+        self, cfg, host, tmp_path, monkeypatch, capsys
+    ):
+        monkeypatch.setattr(cli_kas, "_bundle_switch_on", lambda: True)
+        monkeypatch.setattr(kas_bundle, "installed_versions", lambda: ["0.66.33"])
+        monkeypatch.setattr(kas_bundle, "kas_engines_root", lambda: tmp_path / "engines")
+        self._failing_download(monkeypatch)
+        assert cli_kas.kas_cmd(self._args()) == 1
+        assert "Retry with" not in capsys.readouterr().err
+
+    def test_the_switch_on_is_required_whatever_the_default_backend(self, cfg, monkeypatch):
+        """A member route or a mate pin on KAS runs the engine with the default elsewhere."""
+        cfg.kas_bundle = True
+        cfg.acp_backend = "claude"
+        monkeypatch.setattr(kas_bundle, "installed_versions", lambda: ["0.66.33"])
+        assert cli_kas._engine_need() == cli_kas.ENGINE_REQUIRED
+
+    def test_an_os_error_refreshing_an_engine_only_on_disk_does_not_fail(
+        self, cfg, host, tmp_path, monkeypatch, capsys
+    ):
+        """A full or unwritable disk is reported like a refused fetch: exit 4, not 1."""
+        from kiro_crew.platform.release_apply import ENGINE_OPTIONAL_FAILED_EXIT
+
+        monkeypatch.setattr(cli_kas, "_bundle_switch_on", lambda: False)
+        monkeypatch.setattr(kas_bundle, "installed_versions", lambda: ["0.66.33"])
+        monkeypatch.setattr(kas_bundle, "kas_engines_root", lambda: tmp_path / "engines")
+
+        def no_space(*_a, **_k):
+            raise OSError(28, "No space left on device")
+
+        monkeypatch.setattr(kas_bundle, "fetch_manifest", no_space)
+        assert cli_kas.kas_cmd(self._args()) == ENGINE_OPTIONAL_FAILED_EXIT
+        err = capsys.readouterr().err
+        assert "No space left on device" in err
+        assert "Retry with: kirocrew kas install" in err
+
+    def test_an_os_error_with_the_switch_on_is_not_softened(self, cfg, host, tmp_path, monkeypatch):
+        monkeypatch.setattr(cli_kas, "_bundle_switch_on", lambda: True)
+        monkeypatch.setattr(kas_bundle, "installed_versions", lambda: [])
+        monkeypatch.setattr(kas_bundle, "kas_engines_root", lambda: tmp_path / "engines")
+
+        def no_space(*_a, **_k):
+            raise OSError(28, "No space left on device")
+
+        monkeypatch.setattr(kas_bundle, "fetch_manifest", no_space)
+        with pytest.raises(OSError):
+            cli_kas.kas_cmd(self._args())

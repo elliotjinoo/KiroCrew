@@ -862,6 +862,13 @@ register_frame_point(
     "messageActions", _resolve_message_action, _MESSAGE_ACTION_POINT, _admit_message_action
 )
 
+from kiro_crew.apps.link_open_frame import (  # noqa: E402
+    LINK_OPEN_POINT_SCRIPT,
+    resolve_link_open,
+)
+
+register_frame_point("linkOpen", resolve_link_open, LINK_OPEN_POINT_SCRIPT)
+
 
 __all__: list[str] = [
     "CAPABILITY_HEADER",

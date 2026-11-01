@@ -21,12 +21,13 @@ import { Check, ExternalLink, X } from 'lucide-react'
 import { api } from '../api/client'
 import { currentTheme, mintAppFrame } from '../appFrame/sandboxFrame'
 import ErrorNotice from '../components/ErrorNotice'
-import { OverlayPortal } from '../components/overlayRoot'
+import { OverlayPortal, useCloseWhenCrewHidden } from '../components/overlayRoot'
+import { ESCAPE_PRIORITY, useEscapeLayer } from '../hooks/useEscapeLayer'
 import { Btn } from '../components/ui'
 import { i18nT } from '../i18n/t'
 import { copyToClipboard } from '../utils/clipboard'
 import { isTouchDevice } from '../utils/isTouchDevice'
-import { closeSelectionLayer, openSelectionItem, setSelectionActionItems, useSelectionLayerState, type Anchor } from './selectionActionStore'
+import { closeSelectionLayer, openSelectionItem, setSelectionActionsAvailable, useSelectionLayerState, type Anchor } from './selectionActionStore'
 import { resolveSelectionActions, type ResolvedSelectionAction } from './selectionActionRegistry'
 import { SelectionInvocation, type InvocationOptions, type InvocationView } from './selectionInvocation'
 import { selectedTextFor, type SelectionSourceKind } from './selectionSources'
@@ -43,38 +44,79 @@ export function setSelectionActionMintForTest(mint?: InvocationOptions['mint']):
   mintForItems = mint ?? mintAppFrame
 }
 
-/** Where a floating surface of `width` x `height` goes for an anchor: below it, else above. */
+/** A floating surface's size, never wider or taller than the viewport allows. */
+export function fitViewport(width: number, height: number): { width: number; height: number } {
+  return {
+    width: Math.max(0, Math.min(width, window.innerWidth - 2 * MARGIN)),
+    height: Math.max(0, Math.min(height, window.innerHeight - 2 * MARGIN)),
+  }
+}
+
+/** Where a floating surface of `width` x `height` goes for an anchor: below it,
+ *  else above, and always inside the viewport on both axes (the anchor may have
+ *  scrolled or the window shrunk since it was taken). */
 export function placeBelow(anchor: Anchor, width: number, height: number): { left: number; top: number } {
   const vw = window.innerWidth
   const vh = window.innerHeight
-  const left = Math.max(MARGIN, Math.min(anchor.left, vw - width - MARGIN))
+  const clamp = (n: number, hi: number) => Math.max(MARGIN, Math.min(n, hi))
   const below = anchor.bottom + GAP
-  const top = below + height <= vh - MARGIN ? below : Math.max(MARGIN, anchor.top - GAP - height)
-  return { left, top }
+  const top = below + height <= vh - MARGIN ? below : anchor.top - GAP - height
+  return { left: clamp(anchor.left, vw - width - MARGIN), top: clamp(top, vh - height - MARGIN) }
+}
+
+/** Re-render on every window resize, so floating surfaces re-fit and re-place. */
+function useViewportSize(): void {
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const onResize = () => setTick((t) => t + 1)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 }
 
 function useDismiss(ref: React.RefObject<HTMLElement | null>, close: () => void) {
+  // A page-wide Escape goes through the shared layer stack, above the composer.
+  useEscapeLayer(true, () => { close(); return 'take' }, ESCAPE_PRIORITY.flyout)
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
     const onDown = (e: PointerEvent) => {
       const el = ref.current
       if (el && e.target instanceof Node && !el.contains(e.target)) close()
     }
-    document.addEventListener('keydown', onKey)
     document.addEventListener('pointerdown', onDown, true)
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.removeEventListener('pointerdown', onDown, true)
-    }
+    return () => { document.removeEventListener('pointerdown', onDown, true) }
   }, [ref, close])
 }
 
-function AppsMenu({ items, source, text, anchor }: { items: ResolvedSelectionAction[]; source: SelectionSourceKind; text: string; anchor: Anchor }) {
+type MenuRead = { phase: 'loading' } | { phase: 'failed' } | { phase: 'ready'; items: ResolvedSelectionAction[] }
+
+/** One fresh read of the app list: the items for `source` and nothing cached. */
+async function readMenuItems(source: SelectionSourceKind): Promise<ResolvedSelectionAction[]> {
+  const raw = typeof api?.listApps === 'function' ? await api.listApps() : []
+  return selectItems(raw).filter((i) => i.sources.has(source))
+}
+
+function AppsMenu({ source, text, anchor }: { source: SelectionSourceKind; text: string; anchor: Anchor }) {
   const ref = useRef<HTMLDivElement>(null)
+  // The menu reads the app list itself, every time it opens and on every Retry.
+  // It never lists cached or stale items, and nothing carries over between opens.
+  const [read, setRead] = useState<MenuRead>({ phase: 'loading' })
+  const [attempt, setAttempt] = useState(0)
+  useEffect(() => {
+    let live = true
+    setRead({ phase: 'loading' })
+    readMenuItems(source).then(
+      (items) => { if (live) setRead({ phase: 'ready', items }) },
+      () => { if (live) setRead({ phase: 'failed' }) },
+    )
+    return () => { live = false }
+  }, [source, attempt])
+  const items = read.phase === 'ready' ? read.items : []
+  useViewportSize()
   useDismiss(ref, closeSelectionLayer)
   const touch = isTouchDevice()
-  const pos = touch ? null : placeBelow(anchor, 240, Math.min(48 + items.length * 36, 360))
-  useEffect(() => { ref.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus() }, [])
+  const menuSize = fitViewport(240, Math.min(48 + Math.max(items.length, 1) * 36, 360))
+  const pos = touch ? null : { ...placeBelow(anchor, menuSize.width, menuSize.height), width: menuSize.width, maxHeight: menuSize.height }
+  useEffect(() => { ref.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus() }, [read.phase])
   const onKeyDown = (e: ReactKeyboardEvent) => {
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
     e.preventDefault()
@@ -90,9 +132,26 @@ function AppsMenu({ items, source, text, anchor }: { items: ResolvedSelectionAct
       aria-label={i18nT('components.selectionActions.menu_label')}
       onKeyDown={onKeyDown}
       data-testid="selection-apps-menu"
-      className={`fixed z-[9999] flex flex-col p-1 rounded-lg bg-bg-elevated border border-border shadow-lg ${touch ? 'inset-x-2 bottom-[calc(env(safe-area-inset-bottom,0px)+8px)]' : 'w-60'}`}
+      // Never taller than the screen: every row stays reachable by scrolling.
+      className={`fixed z-[9999] flex flex-col p-1 rounded-lg bg-bg-elevated border border-border shadow-lg overflow-y-auto overscroll-contain ${touch ? 'left-safe-offset-2 right-safe-offset-2 bottom-safe-offset-2 max-h-[calc(100dvh-env(safe-area-inset-bottom,0px)-env(safe-area-inset-top,0px)-16px)]' : ''}`}
       style={pos ?? undefined}
     >
+      {read.phase === 'loading' && (
+        <div role="status" className="px-2.5 py-1.5 text-[13px] text-muted">{i18nT('components.selectionActions.loading')}</div>
+      )}
+      {read.phase === 'failed' && (
+        <div className="m-1 flex items-center justify-between gap-2">
+          {/* No hand-off: the menu floats over a chat whose composer may hold an
+              unsent draft, and the hand-off navigates away from it. */}
+          <ErrorNotice variant="inline" message={i18nT('components.selectionActions.load_failed')} />
+          <Btn className="text-[12px] px-2 py-1 shrink-0" onClick={() => setAttempt((n) => n + 1)}>
+            {i18nT('components.selectionActions.retry')}
+          </Btn>
+        </div>
+      )}
+      {read.phase === 'ready' && !items.length && (
+        <div className="px-2.5 py-1.5 text-[13px] text-muted">{i18nT('components.selectionActions.none')}</div>
+      )}
       {items.map((item) => (
         <button
           key={item.key}
@@ -116,11 +175,13 @@ function ItemPopover({ item, source, text, anchor }: { item: ResolvedSelectionAc
   const titleId = useId()
   const selected = selectedTextFor(source, text, item)
   const [view, setView] = useState<InvocationView | null>(null)
-  const [copied, setCopied] = useState(false)
+  // The value the clipboard took: a later, different offer is not "Copied".
+  const [copiedValue, setCopiedValue] = useState<string | null>(null)
   const [copyFailed, setCopyFailed] = useState(false)
   const invocationRef = useRef<SelectionInvocation | null>(null)
   const close = useCallback(() => closeSelectionLayer(), [])
   useDismiss(ref, close)
+  useViewportSize()
 
   useLayoutEffect(() => {
     const box = boxRef.current
@@ -145,12 +206,15 @@ function ItemPopover({ item, source, text, anchor }: { item: ResolvedSelectionAc
 
   const touch = isTouchDevice()
   const frameHeight = view?.height ?? 160
-  const pos = touch ? null : placeBelow(anchor, item.width, Math.min(item.maxHeight, frameHeight) + CHROME_PX)
+  const size = fitViewport(item.width, Math.min(item.maxHeight, frameHeight) + CHROME_PX)
+  const pos = touch ? null : placeBelow(anchor, size.width, size.height)
   const failed = view?.phase === 'failed'
+  const copied = !!view?.copy && copiedValue === view.copy
   const onCopy = async () => {
     if (!view?.copy) return
-    const ok = await copyToClipboard(view.copy)
-    setCopied(ok)
+    const value = view.copy
+    const ok = await copyToClipboard(value)
+    setCopiedValue(ok ? value : null)
     setCopyFailed(!ok)
   }
 
@@ -161,8 +225,10 @@ function ItemPopover({ item, source, text, anchor }: { item: ResolvedSelectionAc
       aria-modal="false"
       aria-labelledby={titleId}
       data-testid="selection-action-popover"
-      className={`fixed z-[9999] flex flex-col rounded-lg bg-bg-elevated border border-border shadow-lg overflow-hidden ${touch ? 'inset-x-2 bottom-[calc(env(safe-area-inset-bottom,0px)+8px)]' : ''}`}
-      style={pos ? { ...pos, width: item.width } : undefined}
+      // Never taller than the screen: the header and Close stay on screen and
+      // the app's body shrinks (its frame scrolls inside).
+      className={`fixed z-[9999] flex flex-col rounded-lg bg-bg-elevated border border-border shadow-lg overflow-hidden max-h-[calc(100dvh-env(safe-area-inset-bottom,0px)-env(safe-area-inset-top,0px)-16px)] ${touch ? 'left-safe-offset-2 right-safe-offset-2 bottom-safe-offset-2' : ''}`}
+      style={pos ? { ...pos, width: size.width } : undefined}
     >
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
         <span className="shrink-0 text-muted">{itemIcon(item)}</span>
@@ -179,15 +245,17 @@ function ItemPopover({ item, source, text, anchor }: { item: ResolvedSelectionAc
         </button>
       </div>
       {!selected ? (
-        <div className="px-3 py-3 text-[13px] text-muted">{i18nT('components.selectionActions.too_short', { title: item.title })}</div>
+        <div className="px-3 py-3 text-[13px] text-muted">{i18nT('components.selectionActions.too_short', { title: item.title, min: item.minLength, count: text.trim().length })}</div>
       ) : (
         <div
           ref={boxRef}
-          className={failed ? 'hidden' : ''}
+          className={failed ? 'hidden' : 'min-h-0 shrink'}
           style={{ height: Math.min(item.maxHeight, frameHeight) }}
         />
       )}
       {failed && view?.notice && (
+        // No hand-off: the popover floats over a chat whose composer may hold an
+        // unsent draft, and the hand-off navigates away from it.
         <ErrorNotice
           variant="inline"
           className="mx-3 my-3"
@@ -197,6 +265,7 @@ function ItemPopover({ item, source, text, anchor }: { item: ResolvedSelectionAc
         />
       )}
       {copyFailed && (
+        // No hand-off, as above: the draft stays put and Copy can be pressed again.
         <ErrorNotice variant="inline" className="mx-3 mb-2" message={i18nT('components.selectionActions.copy_failed')} onDismiss={() => setCopyFailed(false)} />
       )}
       {!failed && (view?.copy || view?.open) && (
@@ -226,24 +295,23 @@ function selectItems(d: unknown): ResolvedSelectionAction[] {
 
 export default function SelectionActionLayer() {
   // The app list the link-preview layer reads too (one query, one cache entry).
+  // The dashboard's shared app list decides one thing: whether any enabled app
+  // has an approved item, so the toolbar shows the Apps button. The menu never
+  // lists from it.
   const { data } = useQuery({
     queryKey: ['apps'],
     queryFn: () => (typeof api?.listApps === 'function' ? api.listApps() : []),
     select: selectItems,
   })
-  useEffect(() => { setSelectionActionItems(data ?? []) }, [data])
-  // An app that went away (disabled, uninstalled, grant revoked) closes its open popover.
+  useEffect(() => { setSelectionActionsAvailable(!!data && data.length > 0) }, [data])
   const state = useSelectionLayerState()
-  useEffect(() => {
-    if (state.kind === 'item' && data && !data.some((i) => i.key === state.item.key && i.revision === state.item.revision)) {
-      closeSelectionLayer()
-    }
-  }, [data, state])
+  // Behind a remote Crew the menu or popover closes, so its keys cannot reach it.
+  useCloseWhenCrewHidden(state.kind !== 'none', closeSelectionLayer)
   if (state.kind === 'none') return null
   return (
     <OverlayPortal>
       {state.kind === 'menu'
-        ? <AppsMenu key={state.seq} items={state.items} source={state.source} text={state.text} anchor={state.anchor} />
+        ? <AppsMenu key={state.seq} source={state.source} text={state.text} anchor={state.anchor} />
         : <ItemPopover key={state.seq} item={state.item} source={state.source} text={state.text} anchor={state.anchor} />}
     </OverlayPortal>
   )

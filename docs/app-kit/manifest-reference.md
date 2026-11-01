@@ -927,8 +927,11 @@ it, and until then that item is not offered: no frame is made, and a live frame'
 capability stops renewing and its fetches are refused. Removing an item needs
 nothing.
 
-**In the toolbar.** Up to two items across all apps are their own buttons, after
-Quote, Ask and Copy; with more, one **Apps** button opens a menu of them. Each item
+**In the toolbar.** One **Apps** button sits in its own row under Quote, Ask and
+Copy, so the host's row never grows. It appears only while some enabled app has an
+approved item. It opens a menu of every item, read fresh from the app list each time
+it opens; if that read fails, the menu says so and offers **Retry**. The menu scrolls
+when it is taller than the screen. Each item
 names its app in its tooltip and in the popover's header. On a touch device the
 native selection, its handles and its Copy callout are left alone: nothing listens
 for a long-press. The items sit in the toolbar docked above the composer, and the

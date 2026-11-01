@@ -10,6 +10,7 @@
  * @module selectionActions/selectionActionRegistry
  */
 import type { OfferKind } from '../appFrame/frameProtocol'
+import { compareText } from '../i18n/format'
 import type { SelectionSourceKind } from './selectionSources'
 
 /** Mirrors `_PANEL_TAB_ID_RE` and the caps in `apps/manifest_contributes.py`. */
@@ -109,5 +110,5 @@ export function resolveSelectionActions(apps: readonly AppLike[]): ResolvedSelec
       })
     }
   }
-  return out.sort((a, b) => a.appLabel.localeCompare(b.appLabel))
+  return out.sort((a, b) => compareText(a.appLabel, b.appLabel))
 }

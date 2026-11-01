@@ -10378,7 +10378,6 @@
     "selectionActions": {
       "apps": "应用",
       "apps_hint": "把选中的文字发给一个应用",
-      "item_hint": "把选中的文字发给 {{app}}",
       "menu_label": "处理选中文字的应用",
       "close": "关闭",
       "copy": "复制",
@@ -10386,8 +10385,12 @@
       "open": "打开 {{host}}",
       "no_response": "{{app}} 没有响应。",
       "failed": "{{app}} 出错了：{{message}}",
-      "too_short": "请多选一些文字再使用「{{title}}」。",
-      "copy_failed": "无法复制到剪贴板。"
+      "too_short": "“{{title}}”至少需要 {{min}} 个字符，你选了 {{count}} 个。",
+      "copy_failed": "无法复制到剪贴板。",
+      "load_failed": "无法加载处理选中文字的应用。",
+      "loading": "正在加载应用…",
+      "none": "没有应用可处理这段文字。",
+      "retry": "重试"
     }
   },
   "hooks": {

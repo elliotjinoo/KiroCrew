@@ -4298,17 +4298,28 @@ picks an app's item; the app is handed that text and nothing else.
   items only through a typed source adapter (`selectionActions/selectionSources.ts`);
   the one source is `chat`, the text `SelectionToolbar` snapshotted inside one
   `AssistantMessage`, trimmed and cut to `maxLength` without splitting a surrogate
-  pair. A new source is a new `sources` value, which widens every item's grant.
-- **Trigger and touch.** Up to two items are toolbar buttons after the host's own;
-  more collapse into one **Apps** menu. The items come from a store the one mounted
-  `SelectionActionLayer` fills from the app list, so a chat reply runs no query. On
+  pair. App items get only the selection's one range inside that reply
+  (`appTextRef`), never the other ranges of a multi-range selection, which host
+  Copy keeps. The layer is mounted in the dashboard, popped-out and embedded chat
+  shells. A new source is a new `sources` value, which widens every item's grant.
+- **Trigger and touch.** One **Apps** button sits in its own row under the host's
+  (`SelectionToolbar`'s `appActions`), so the host row never grows. It shows only
+  while the dashboard's shared `['apps']` list holds an enabled app with an approved
+  item; that list decides the button's presence and nothing else.
+- **The menu reads fresh (rule).** The Apps menu reads the app list itself every
+  time it opens and lists items only from that read. It never lists cached or stale
+  items, and no state carries over between opens. If the read fails, it shows the
+  "couldn't load apps" error row with **Retry**, and Retry runs a new read. There is
+  no retry state machine and no fallback list. The menu scrolls past the screen
+  height. On
   touch the toolbar is the existing dock above the composer and the popover is a
   bottom sheet; nothing intercepts a long-press, and the native selection, handles
   and callout are untouched.
 - **Invocation** (`selectionActions/selectionInvocation.ts` on `HostInvocation`):
-  sent on `ready`, deadline 2 minutes. On top of the contract: an offer of a kind
-  the item did not declare is answered `result.error { code: not_allowed }` before
-  the contract sees it, a resize is clamped to 48 and `popover.maxHeight`, and the
+  sent on `ready`, deadline 2 minutes. The item's `effects` are the invocation's
+  `allowedKinds` (`copy`, `open`; never `insert`), so any other kind is answered
+  `result.error { code: not_allowed }`; a frame `invocation.close` settles the
+  invocation (`settle()`, no cancel); a resize is clamped to 48 and `popover.maxHeight`, and the
   host cancels with `closed` when the popover closes (Escape, Close, a click
   outside, another pick, or the item no longer approved). Accepted offers fill the
   host's **Copy** and **Open \<host\>** buttons only. Selection frames are not

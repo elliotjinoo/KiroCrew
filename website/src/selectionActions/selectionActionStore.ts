@@ -2,7 +2,8 @@
  * What the selection-action layer shows: nothing, the apps menu, or one item's popover.
  *
  * A selection toolbar writes here (`useAppSelectionActions`); the one mounted
- * `SelectionActionLayer` reads it. Opening anything replaces what was open, so at
+ * `SelectionActionLayer` reads it. The menu holds no items: it reads the app list
+ * itself each time it opens. Opening anything replaces what was open, so at
  * most one invocation is ever live.
  *
  * @module selectionActions/selectionActionStore
@@ -19,30 +20,30 @@ export interface Anchor {
 
 export type SelectionLayerState =
   | { kind: 'none' }
-  | { kind: 'menu'; seq: number; items: ResolvedSelectionAction[]; source: SelectionSourceKind; text: string; anchor: Anchor }
+  | { kind: 'menu'; seq: number; source: SelectionSourceKind; text: string; anchor: Anchor }
   | { kind: 'item'; seq: number; item: ResolvedSelectionAction; source: SelectionSourceKind; text: string; anchor: Anchor }
 
 let state: SelectionLayerState = { kind: 'none' }
 let seq = 0
 const listeners = new Set<() => void>()
 
-// The approved items, published by the one mounted layer from the app list, so a
-// chat reply reads them without a query of its own.
-const NO_ITEMS: ResolvedSelectionAction[] = []
-let items: ResolvedSelectionAction[] = NO_ITEMS
-const itemListeners = new Set<() => void>()
+// Whether ANY enabled app has an approved selection action, published by the
+// mounted layer from the dashboard's shared app list. It only decides whether the
+// toolbar shows the Apps button; it never supplies the items the menu lists.
+let available = false
+const availableListeners = new Set<() => void>()
 
-export function setSelectionActionItems(next: ResolvedSelectionAction[]): void {
-  if (next === items) return
-  items = next.length ? next : NO_ITEMS
-  itemListeners.forEach((l) => l())
+export function setSelectionActionsAvailable(next: boolean): void {
+  if (next === available) return
+  available = next
+  availableListeners.forEach((l) => l())
 }
 
-export function useSelectionActionItems(): ResolvedSelectionAction[] {
+export function useSelectionActionsAvailable(): boolean {
   return useSyncExternalStore(
-    (l) => { itemListeners.add(l); return () => { itemListeners.delete(l) } },
-    () => items,
-    () => items,
+    (l) => { availableListeners.add(l); return () => { availableListeners.delete(l) } },
+    () => available,
+    () => available,
   )
 }
 
@@ -53,8 +54,8 @@ function set(next: SelectionLayerState): void {
 
 const anchorOf = (rect: DOMRect): Anchor => ({ left: rect.left, top: rect.top, bottom: rect.bottom })
 
-export function openSelectionMenu(items: ResolvedSelectionAction[], source: SelectionSourceKind, text: string, rect: DOMRect): void {
-  set({ kind: 'menu', seq: ++seq, items, source, text, anchor: anchorOf(rect) })
+export function openSelectionMenu(source: SelectionSourceKind, text: string, rect: DOMRect): void {
+  set({ kind: 'menu', seq: ++seq, source, text, anchor: anchorOf(rect) })
 }
 
 export function openSelectionItem(item: ResolvedSelectionAction, source: SelectionSourceKind, text: string, rect: DOMRect | Anchor): void {
@@ -64,10 +65,6 @@ export function openSelectionItem(item: ResolvedSelectionAction, source: Selecti
 
 export function closeSelectionLayer(): void {
   if (state.kind !== 'none') set({ kind: 'none' })
-}
-
-export function getSelectionLayerState(): SelectionLayerState {
-  return state
 }
 
 export function useSelectionLayerState(): SelectionLayerState {

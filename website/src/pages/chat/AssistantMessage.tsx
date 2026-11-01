@@ -298,9 +298,10 @@ const AssistantMessage = memo(function AssistantMessage({ content, isStreaming, 
   const selectionActions = useSelectionActions(onQuote, onAsk)
   // App items (`contributes.selectionActions`) read this reply through the typed
   // `chat` source: the text the toolbar snapshotted, never the document selection.
+  // They sit in their own toolbar row, so the host row never grows.
   const appActions = useAppSelectionActions('chat')
   const touch = isTouchDevice()
-  const toolbarActions = [...(touch ? selectionActions.filter(a => a.id !== 'copy') : selectionActions), ...appActions]
+  const toolbarActions = touch ? selectionActions.filter(a => a.id !== 'copy') : selectionActions
 
   const { term, caseSensitive } = useSearchHighlight()
   const currentOcc = useCurrentOcc()
@@ -713,7 +714,7 @@ const AssistantMessage = memo(function AssistantMessage({ content, isStreaming, 
           and Copy callout around the selection, and a row drawn on top of them
           took the taps meant for the handles. Copy is left to that callout, so
           the dock carries only what the platform cannot do (Quote, Ask). */}
-      {toolbarActions.length > 0 && <SelectionToolbar containerRef={contentRef} actions={toolbarActions} dock={touch} copyOnSelect={copyOnSelect} />}
+      {toolbarActions.length + appActions.length > 0 && <SelectionToolbar containerRef={contentRef} actions={toolbarActions} appActions={appActions} dock={touch} copyOnSelect={copyOnSelect} />}
     </div>
     </MessageContextMenu>
     {/* Directly under the bubble, above the file chips: the strip says how THIS

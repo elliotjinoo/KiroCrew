@@ -10706,7 +10706,6 @@
     "selectionActions": {
       "apps": "App",
       "apps_hint": "Invia il testo selezionato a un'app",
-      "item_hint": "Invia il testo selezionato a {{app}}",
       "menu_label": "App per il testo selezionato",
       "close": "Chiudi",
       "copy": "Copia",
@@ -10714,8 +10713,12 @@
       "open": "Apri {{host}}",
       "no_response": "{{app}} non ha risposto.",
       "failed": "{{app}} ha avuto un problema: {{message}}",
-      "too_short": "Seleziona più testo per usare {{title}}.",
-      "copy_failed": "Impossibile copiare negli appunti."
+      "too_short": "{{title}} richiede almeno {{min}} caratteri. Ne hai selezionati {{count}}.",
+      "copy_failed": "Impossibile copiare negli appunti.",
+      "load_failed": "Impossibile caricare le app per il testo selezionato.",
+      "loading": "Caricamento app…",
+      "none": "Nessuna app ha un’azione per questo testo.",
+      "retry": "Riprova"
     }
   },
   "hooks": {

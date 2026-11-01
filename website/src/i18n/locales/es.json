@@ -10706,7 +10706,6 @@
     "selectionActions": {
       "apps": "Apps",
       "apps_hint": "Enviar el texto seleccionado a una app",
-      "item_hint": "Envía el texto seleccionado a {{app}}",
       "menu_label": "Apps para el texto seleccionado",
       "close": "Cerrar",
       "copy": "Copiar",
@@ -10714,8 +10713,12 @@
       "open": "Abrir {{host}}",
       "no_response": "{{app}} no respondió.",
       "failed": "{{app}} tuvo un problema: {{message}}",
-      "too_short": "Selecciona más texto para usar {{title}}.",
-      "copy_failed": "No se pudo copiar al portapapeles."
+      "too_short": "{{title}} necesita al menos {{min}} caracteres. Seleccionaste {{count}}.",
+      "copy_failed": "No se pudo copiar al portapapeles.",
+      "load_failed": "No se pudieron cargar las apps para el texto seleccionado.",
+      "loading": "Cargando apps…",
+      "none": "Ninguna app tiene una acción para este texto.",
+      "retry": "Reintentar"
     }
   },
   "hooks": {

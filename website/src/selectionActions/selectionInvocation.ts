@@ -5,10 +5,9 @@
  * (`appFrame/invocation.ts`). The host creates the item's sandboxed frame, and
  * once the module is `ready` the `HostInvocation` sends it `selection.invoke` with
  * its own `invocationId`, the selected text and the deadline. The contract then
- * owns offers, resize, close, error, deadline and cancel. This point adds two
- * rules of its own: an offer of a kind the item did not declare in `effects` is
- * refused `not_allowed` before the contract sees it, and a resize is clamped to
- * the item's `popover.maxHeight`.
+ * owns offers, resize, close, error, deadline and cancel. The item's `effects`
+ * are its `allowedKinds`, so an offer of any other kind is refused `not_allowed`;
+ * a resize is clamped to the item's `popover.maxHeight`.
  *
  * The frame never writes the clipboard or opens a window: an accepted offer only
  * fills the host's own Copy or Open button, which acts on the user's click.
@@ -96,11 +95,10 @@ export class SelectionInvocation {
         this.update({ height: Math.max(MIN_FRAME_HEIGHT, Math.min(Math.round(height), opts.item.maxHeight)) })
       },
       onClose: () => {
+        // The frame ended it: settled, so no cancel is sent.
+        this.contract.settle()
         this.update({ phase: 'done' })
-        // The frame ended it: remove the frame first, so stopping the contract's
-        // deadline sends it no cancel.
         this.teardown()
-        this.contract.cancel('closed')
         opts.onClose()
       },
       onError: (message) => this.fail({ kind: 'error', message: displaySafe(message) }),
@@ -109,6 +107,9 @@ export class SelectionInvocation {
         this.teardown()
         opts.onClose()
       },
+    }, {
+      // The item's grant names the host buttons it may fill; any other kind is refused.
+      allowedKinds: opts.item.effects,
     })
     this.onMessage = this.onMessage.bind(this)
   }
@@ -214,14 +215,6 @@ export class SelectionInvocation {
         return
       case 'escape':
         this.opts.onClose()
-        return
-      case 'result.offer':
-        // The item's grant names the host buttons it may fill; any other kind is refused.
-        if (msg.kind && !this.opts.item.effects.has(msg.kind) && msg.invocationId === this.contract.id && msg.seq > 0) {
-          postToFrame(this.el, { type: 'result.error', invocationId: msg.invocationId, seq: msg.seq, code: 'not_allowed' })
-          return
-        }
-        this.contract.handle(msg)
         return
       default:
         this.contract.handle(msg)

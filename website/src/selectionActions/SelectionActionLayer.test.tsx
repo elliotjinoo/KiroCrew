@@ -7,7 +7,7 @@ import { FRAME_SANDBOX } from '../appFrame/sandboxFrame'
 import { installFrameWindows, postFrom, sentTo, type Sent } from '../test/LinkPreviewFramesTestUtils'
 import { resolveSelectionActions, selectionGrantEntry, type ResolvedSelectionAction } from './selectionActionRegistry'
 import { selectedTextFor } from './selectionSources'
-import { closeSelectionLayer, openSelectionItem, setSelectionActionItems } from './selectionActionStore'
+import { closeSelectionLayer, openSelectionItem, openSelectionMenu, setSelectionActionsAvailable } from './selectionActionStore'
 import { READY_TIMEOUT_MS, SELECTION_DEADLINE_MS as INVOCATION_DEADLINE_MS, SelectionInvocation, type InvocationView } from './selectionInvocation'
 
 const listApps = vi.fn()
@@ -29,6 +29,14 @@ function app(over: Record<string, unknown> = {}, items: unknown[] = [ITEM], appr
     manifest: { contributes: { selectionActions: items } },
     ...over,
   }
+}
+/** Apps with `n` approved items in total (two per app, the manifest cap). */
+function manyApp(n: number) {
+  return Array.from({ length: Math.ceil(n / 2) }, (_, a) => app(
+    { name: `app-${a}`, displayName: `App ${a}` },
+    Array.from({ length: Math.min(2, n - a * 2) }, (_, i) => ({ ...ITEM, id: `i${i}`, title: `Item ${a}-${i}` })),
+    Array.from({ length: Math.min(2, n - a * 2) }, (_, i) => `i${i}`),
+  ))
 }
 const item = (over: Record<string, unknown> = {}): ResolvedSelectionAction => resolveSelectionActions([app({}, [{ ...ITEM, ...over }])])[0]
 
@@ -72,7 +80,7 @@ beforeEach(() => {
 })
 afterEach(() => {
   act(() => closeSelectionLayer())
-  act(() => setSelectionActionItems([]))
+  act(() => setSelectionActionsAvailable(false))
   listApps.mockReset()
   mint.mockClear()
   copyToClipboard.mockClear()
@@ -136,6 +144,15 @@ describe('selection actions: one invocation', () => {
     from(inv.el, 'result.offer', { invocationId: id, seq: 4, kind: 'open', value: 'https://notes.example.com/n/1' })
     expect(views.at(-1)?.open?.hostname).toBe('notes.example.com')
     expect(views.at(-1)?.copy).toBe('note link')
+  })
+
+  it('never accepts an insert offer, and a frame close sends no cancel', async () => {
+    const { inv, sent, id, onClose } = await opened()
+    from(inv.el, 'result.offer', { invocationId: id, seq: 1, kind: 'insert', value: 'x' })
+    expect(sent.at(-1)).toMatchObject({ type: 'result.error', seq: 1, code: 'not_allowed' })
+    from(inv.el, 'invocation.close', { invocationId: id })
+    expect(onClose).toHaveBeenCalled()
+    expect(types(sent)).not.toContain('invoke.cancel')
   })
 
   it('refuses an effect the item did not declare', async () => {
@@ -241,12 +258,72 @@ describe('selection actions: the layer', () => {
     expect(sentTo(el).map((m) => m.type)).toContain('invoke.cancel')
   })
 
-  it('an item that is no longer approved closes its popover', async () => {
-    listApps.mockResolvedValue([app({}, [ITEM], [])])
+  it('says how much text the item needs and how much is selected', async () => {
+    listApps.mockResolvedValue([app()])
+    await mountLayer()
+    act(() => openSelectionItem(item({ minLength: 200 }), 'chat', ' twelve chars ', rect))
+    const dialog = await screen.findByTestId('selection-action-popover')
+    expect(dialog.textContent).toContain('Save to notes needs at least 200 characters. You selected 12.')
+  })
+
+  it('never grows past the screen, so its header and Close stay reachable', async () => {
+    touch = true
+    listApps.mockResolvedValue([app()])
     await mountLayer()
     act(() => openSelectionItem(item(), 'chat', 'words', rect))
-    await waitFor(() => expect(listApps).toHaveBeenCalled())
-    await waitFor(() => expect(screen.queryByTestId('selection-action-popover')).toBeNull())
+    const dialog = await screen.findByTestId('selection-action-popover')
+    expect(dialog.className).toMatch(/max-h-\[calc\(100dvh/)
+    expect(dialog.className).toContain('bottom-safe-offset-2')
+  })
+
+  it('a replacement offer is not shown as copied', async () => {
+    listApps.mockResolvedValue([app()])
+    await mountLayer()
+    act(() => openSelectionItem(item(), 'chat', 'words', rect))
+    const dialog = await screen.findByTestId('selection-action-popover')
+    await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+    const el = dialog.querySelector('iframe') as HTMLIFrameElement
+    act(() => from(el, 'ready'))
+    const id = sentTo(el).find((m) => m.type === 'selection.invoke')?.invocationId
+    act(() => from(el, 'result.offer', { invocationId: id, seq: 1, kind: 'copy', value: 'A' }))
+    fireEvent.click(await screen.findByText('Copy'))
+    await screen.findByText('Copied')
+    act(() => from(el, 'result.offer', { invocationId: id, seq: 2, kind: 'copy', value: 'B' }))
+    await screen.findByText('Copy')
+    expect(screen.queryByText('Copied')).toBeNull()
+  })
+
+  it('a desktop popover moves back into view when the window shrinks', async () => {
+    const h = window.innerHeight
+    try {
+      listApps.mockResolvedValue([app()])
+      await mountLayer()
+      act(() => openSelectionItem(item(), 'chat', 'words', { left: 100, top: 780, bottom: 800 }))
+      const dialog = await screen.findByTestId('selection-action-popover')
+      act(() => { Object.assign(window, { innerHeight: 400 }); window.dispatchEvent(new Event('resize')) })
+      await waitFor(() => expect(parseFloat(dialog.style.top) + parseFloat(dialog.style.height || '0')).toBeLessThanOrEqual(400))
+      expect(parseFloat(dialog.style.top)).toBeLessThanOrEqual(400 - 8)
+    } finally {
+      Object.assign(window, { innerHeight: h })
+    }
+  })
+
+  it('a desktop popover and menu never outgrow a small window', async () => {
+    const w = window.innerWidth, h = window.innerHeight
+    Object.assign(window, { innerWidth: 390, innerHeight: 300 })
+    try {
+      await mountLayer()
+      act(() => openSelectionItem(item({ popover: { width: 480 } }), 'chat', 'words', rect))
+      const dialog = await screen.findByTestId('selection-action-popover')
+      expect(parseFloat(dialog.style.width)).toBeLessThanOrEqual(390 - 16)
+      listApps.mockResolvedValue(manyApp(14))
+      act(() => openSelectionMenu('chat', 'words', new DOMRect(10, 10, 10, 10)))
+      const menu = await screen.findByTestId('selection-apps-menu')
+      await waitFor(() => expect(menu.querySelectorAll('[role="menuitem"]')).toHaveLength(14))
+      expect(parseFloat(menu.style.maxHeight)).toBeLessThanOrEqual(300 - 16)
+    } finally {
+      Object.assign(window, { innerWidth: w, innerHeight: h })
+    }
   })
 
   it('a selection shorter than the item needs opens no frame', async () => {
@@ -269,21 +346,101 @@ describe('selection actions: the layer', () => {
   })
 })
 
-describe('selection actions: toolbar items', () => {
-  async function hook(apps: unknown[]) {
-    const { useAppSelectionActions } = await import('./useAppSelectionActions')
-    // No query provider: a chat reply reads the store the layer publishes.
-    act(() => setSelectionActionItems(resolveSelectionActions(apps as never[])))
-    return renderHook(() => useAppSelectionActions('chat'))
-  }
+describe('selection actions: every chat shell mounts the layer', () => {
+  it('the dashboard, popped-out and embedded chats each mount SelectionActionLayer', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { join } = await import('node:path')
+    const src = readFileSync(join(__dirname, '..', 'App.tsx'), 'utf8')
+    const at = (marker: string) => src.indexOf(marker)
+    const mounts = [...src.matchAll(/<SelectionActionLayer \/>/g)].map((m) => m.index ?? -1)
+    // One in each branch: popout, embed, and the dashboard shell after them.
+    expect(mounts).toHaveLength(3)
+    expect(mounts[0]).toBeGreaterThan(at('isPopout ? ('))
+    expect(mounts[0]).toBeLessThan(at('isEmbed ? ('))
+    expect(mounts[1]).toBeGreaterThan(at('isEmbed ? ('))
+    expect(mounts[1]).toBeLessThan(at('<Route path="/embed/chat/:slug?"'))
+  })
+})
 
-  it('up to two items are their own buttons; more share one Apps button', async () => {
-    const two = await hook([app({}, [ITEM, { ...ITEM, id: 'tag', title: 'Tag it' }], ['save', 'tag'])])
-    await waitFor(() => expect(two.result.current.map((a) => a.label)).toEqual(['Save to notes', 'Tag it']))
-    const many = await hook([
-      app({}, [ITEM, { ...ITEM, id: 'tag', title: 'Tag it' }], ['save', 'tag']),
-      app({ name: 'other', displayName: 'Other' }, [ITEM], ['save']),
-    ])
-    await waitFor(() => expect(many.result.current.map((a) => a.id)).toEqual(['app-items']))
+describe('selection actions: the Apps button and its menu', () => {
+  async function mountMenuLayer() {
+    const mod = await import('./SelectionActionLayer')
+    mod.setSelectionActionMintForTest(mint)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(createElement(QueryClientProvider, { client: qc }, createElement(mod.default)))
+  }
+  const at = new DOMRect(10, 10, 10, 10)
+
+  it('shows one Apps button only while some app has an approved item', async () => {
+    const { useAppSelectionActions } = await import('./useAppSelectionActions')
+    const r = renderHook(() => useAppSelectionActions('chat'))
+    expect(r.result.current).toEqual([])
+    listApps.mockResolvedValue([app()])
+    await mountMenuLayer()
+    await waitFor(() => expect(r.result.current.map((a) => a.id)).toEqual(['app-items']))
+  })
+
+  it('a failed shared read shows no Apps button', async () => {
+    const { useAppSelectionActions } = await import('./useAppSelectionActions')
+    listApps.mockRejectedValue(new Error('down'))
+    await mountMenuLayer()
+    const r = renderHook(() => useAppSelectionActions('chat'))
+    await waitFor(() => expect(listApps).toHaveBeenCalled())
+    expect(r.result.current).toEqual([])
+  })
+
+  it('the menu reads the app list fresh on every open and lists only that read', async () => {
+    listApps.mockResolvedValue([app()])
+    await mountMenuLayer()
+    await waitFor(() => expect(listApps).toHaveBeenCalledTimes(1))
+    // The app is gone by the time the menu opens: it lists nothing stale.
+    listApps.mockResolvedValue([])
+    act(() => openSelectionMenu('chat', 'words', at))
+    const menu = await screen.findByTestId('selection-apps-menu')
+    await waitFor(() => expect(menu.textContent).toContain('No app has an item for this text.'))
+    expect(listApps).toHaveBeenCalledTimes(2)
+    expect(menu.querySelectorAll('[role="menuitem"]')).toHaveLength(0)
+    act(() => closeSelectionLayer())
+    listApps.mockResolvedValue([app()])
+    act(() => openSelectionMenu('chat', 'words', at))
+    const again = await screen.findByTestId('selection-apps-menu')
+    await waitFor(() => expect(again.querySelectorAll('[role="menuitem"]')).toHaveLength(1))
+    expect(listApps).toHaveBeenCalledTimes(3)
+  })
+
+  it('a failed menu read shows the error row with Retry', async () => {
+    listApps.mockResolvedValue([app()])
+    await mountMenuLayer()
+    listApps.mockRejectedValue(new Error('down'))
+    act(() => openSelectionMenu('chat', 'words', at))
+    const menu = await screen.findByTestId('selection-apps-menu')
+    await waitFor(() => expect(menu.textContent).toContain("Couldn't load the apps"))
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy()
+    expect(menu.querySelectorAll('[role="menuitem"]')).toHaveLength(0)
+  })
+
+  it('Retry runs a fresh read and lists what it returns', async () => {
+    listApps.mockResolvedValue([app()])
+    await mountMenuLayer()
+    listApps.mockRejectedValueOnce(new Error('down'))
+    act(() => openSelectionMenu('chat', 'words', at))
+    const menu = await screen.findByTestId('selection-apps-menu')
+    await screen.findByRole('button', { name: 'Retry' })
+    const before = listApps.mock.calls.length
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    await waitFor(() => expect(menu.querySelectorAll('[role="menuitem"]')).toHaveLength(1))
+    expect(listApps.mock.calls.length).toBe(before + 1)
+    expect(menu.textContent).not.toContain("Couldn't load the apps")
+  })
+
+  it('the Apps menu never grows past the screen', async () => {
+    touch = true
+    listApps.mockResolvedValue(manyApp(14))
+    await mountMenuLayer()
+    act(() => openSelectionMenu('chat', 'words', at))
+    const menu = await screen.findByTestId('selection-apps-menu')
+    await waitFor(() => expect(menu.querySelectorAll('[role="menuitem"]')).toHaveLength(14))
+    expect(menu.className).toContain('overflow-y-auto')
+    expect(menu.className).toMatch(/max-h-\[calc\(100dvh/)
   })
 })

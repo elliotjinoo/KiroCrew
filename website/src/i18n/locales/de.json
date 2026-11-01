@@ -10542,7 +10542,6 @@
     "selectionActions": {
       "apps": "Apps",
       "apps_hint": "Ausgewählten Text an eine App senden",
-      "item_hint": "Sendet den ausgewählten Text an {{app}}",
       "menu_label": "Apps für den ausgewählten Text",
       "close": "Schließen",
       "copy": "Kopieren",
@@ -10550,8 +10549,12 @@
       "open": "{{host}} öffnen",
       "no_response": "{{app}} hat nicht geantwortet.",
       "failed": "{{app}} hatte ein Problem: {{message}}",
-      "too_short": "Wähle mehr Text aus, um {{title}} zu verwenden.",
-      "copy_failed": "Kopieren in die Zwischenablage fehlgeschlagen."
+      "too_short": "{{title}} braucht mindestens {{min}} Zeichen. Du hast {{count}} ausgewählt.",
+      "copy_failed": "Kopieren in die Zwischenablage fehlgeschlagen.",
+      "load_failed": "Die Apps für den ausgewählten Text konnten nicht geladen werden.",
+      "loading": "Apps werden geladen…",
+      "none": "Keine App hat eine Aktion für diesen Text.",
+      "retry": "Erneut versuchen"
     }
   },
   "hooks": {

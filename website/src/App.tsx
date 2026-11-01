@@ -545,6 +545,9 @@ export default function App() {
         </Routes>
       </>
     ) : isPopout ? (
+      <>
+      {/* A popped-out chat offers app items on selected text too. */}
+      <Suspense fallback={null}><SelectionActionLayer /></Suspense>
       <Routes>
         <Route path="/popout/chat/:slug?" element={<ErrorBoundary><PopoutFrame /></ErrorBoundary>} />
         <Route path="/popout/artifact/:slug" element={<ErrorBoundary><ArtifactPopoutFrame /></ErrorBoundary>} />
@@ -555,9 +558,11 @@ export default function App() {
             stray path to '/', which no longer matches anything here). */}
         <Route path="*" element={<Navigate to={initialPopoutPath} replace />} />
       </Routes>
+      </>
     ) : isEmbed ? (
       <div className="h-screen supports-[height:100dvh]:h-dvh w-screen overflow-hidden bg-bg flex flex-col">
         <KiroCrewNavBridge />
+        <Suspense fallback={null}><SelectionActionLayer /></Suspense>
         <EmbedTabStrip />
         <div className="flex-1 min-h-0">
           <Routes>

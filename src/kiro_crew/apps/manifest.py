@@ -50,8 +50,12 @@ from kiro_crew.apps.manifest_contributes import (  # noqa: F401
     _MAX_LINK_PREVIEW_HOSTS,
     _MAX_PANEL_TABS_PER_APP,
     _MAX_PROMPT_TEMPLATE,
+    _MAX_SELECTION_TITLE,
     _MAX_TITLE,
     _PANEL_TAB_ID_RE,
+    _SELECTION_ICON_RE,
+    _SELECTION_POPOVER_HEIGHT,
+    _SELECTION_POPOVER_WIDTH,
     _SESSION_CONTROL_ID_RE,
     _SESSION_CONTROL_STATUS_PATH_RE,
     _TEXT_PATTERN_FLAGS_RE,
@@ -75,7 +79,9 @@ from kiro_crew.apps.manifest_contributes import (  # noqa: F401
     PanelTabConfig,
     SelectionActionConfig,
     SessionControlContribution,
+    _int_field,
     _mirrored_len,
+    _name_list,
     _normalize_status_path,
 )
 from kiro_crew.apps.manifest_names import (  # noqa: F401

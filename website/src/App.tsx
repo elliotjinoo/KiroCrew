@@ -79,7 +79,6 @@ import QuickSearchSurface from './components/QuickSearchSurface'
 import ReportProblemModal from './components/ReportProblemModal'
 import KiroAccountModal from './components/KiroAccountModal'
 
-import { StartupVideo } from './shell/boot/startupVideo'
 import { i18nT } from './i18n/t'
 import { isAppNavId } from './appNotificationBadges'
 import { lazyPage, TasksRedirect, ChatRedirect, OrchestratedRedirect } from './shell/routes'
@@ -316,7 +315,7 @@ export default function App() {
     setShortcutsOpen, toggleShortcutsModal, commandPalette, agentSwitchNotice, kiroUsageOpen, setKiroUsageOpen,
     kiroUsageState, kiroAccountEntry, metrics, subscribeLogs, subscribeSubagents, forceReconnect,
     updateFlow, updating, setUpdating, showUpdateModal, setShowUpdateModal, showChangelog, updateError,
-    setUpdateError, startupVideo, reportProblemOpen, setReportProblemOpen, effectiveCollapsed, activePath,
+    setUpdateError, reportProblemOpen, setReportProblemOpen, effectiveCollapsed, activePath,
     libraryNavActive, discoverNavActive, isChat, needsFixedHeight, navRowActive, membersRoute, mobileSingle,
   } = shell
   // "Run in terminal" from a code block outside every chat, on any route.
@@ -763,7 +762,6 @@ export default function App() {
               <UpdateFoundModal held={showChangelog || shortcutsOpen} />
             </Suspense>
           )}
-          <StartupVideo startupVideo={startupVideo} />
           <MobileConnectDialog mobileConnect={mobileConnect} />
           <RemoteUpdateOffer />
 

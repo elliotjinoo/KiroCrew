@@ -13,6 +13,7 @@ import { isTouchDevice } from '../../utils/isTouchDevice'
 import MarkdownRenderer from '../../components/MarkdownRenderer'
 import MessageErrorBoundary from '../../components/MessageErrorBoundary'
 import SelectionToolbar, { useSelectionActions } from '../../components/SelectionToolbar'
+import { useAppSelectionActions } from '../../selectionActions/useAppSelectionActions'
 import { useSearchHighlight, useCurrentOcc } from '../../hooks/SearchHighlightContext'
 import { applySearchHighlights, clearSearchHighlights } from '../../utils/domHighlight'
 import { scrollCurrentMatchIntoView } from '../../utils/searchScroll'
@@ -295,8 +296,11 @@ const AssistantMessage = memo(function AssistantMessage({ content, isStreaming, 
     setRawMode(!rawMode)
   }
   const selectionActions = useSelectionActions(onQuote, onAsk)
+  // App items (`contributes.selectionActions`) read this reply through the typed
+  // `chat` source: the text the toolbar snapshotted, never the document selection.
+  const appActions = useAppSelectionActions('chat')
   const touch = isTouchDevice()
-  const toolbarActions = touch ? selectionActions.filter(a => a.id !== 'copy') : selectionActions
+  const toolbarActions = [...(touch ? selectionActions.filter(a => a.id !== 'copy') : selectionActions), ...appActions]
 
   const { term, caseSensitive } = useSearchHighlight()
   const currentOcc = useCurrentOcc()

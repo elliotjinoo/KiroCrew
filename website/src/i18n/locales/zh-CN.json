@@ -10374,6 +10374,20 @@
       "reason": "我不能运行这条命令，但你可以。",
       "run_unanswered": "终端没有响应，请把它复制到你电脑上的终端应用里。",
       "title": "请你自己运行"
+    },
+    "selectionActions": {
+      "apps": "应用",
+      "apps_hint": "把选中的文字发给一个应用",
+      "item_hint": "把选中的文字发给 {{app}}",
+      "menu_label": "处理选中文字的应用",
+      "close": "关闭",
+      "copy": "复制",
+      "copied": "已复制",
+      "open": "打开 {{host}}",
+      "no_response": "{{app}} 没有响应。",
+      "failed": "{{app}} 出错了：{{message}}",
+      "too_short": "请多选一些文字再使用「{{title}}」。",
+      "copy_failed": "无法复制到剪贴板。"
     }
   },
   "hooks": {
@@ -10755,7 +10769,8 @@
       "grants_reconsent_link_hosts": "链接主机：允许应用的悬停卡片看到聊天消息中指向这些站点的链接。",
       "grants_reconsent_link_patterns": "文本模式：允许应用的悬停卡片看到聊天中与这些模式匹配的文本。",
       "grants_reconsent_link_full_url": "完整链接地址：应用的悬停卡片还会看到链接中 ? 或 # 之后的部分，其中可能包含登录代码。",
-      "grants_approved": "已批准：{{entries}}。应用现在可以使用它们。"
+      "grants_approved": "已批准：{{entries}}。应用现在可以使用它们。",
+      "grants_reconsent_selection_actions": "选中文字操作：允许应用的条目拿到你在聊天回复中选中的文字，并提供结果供复制或打开。"
     },
     "appPage": {
       "loading_app": "加载应用…",

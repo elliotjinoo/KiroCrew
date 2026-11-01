@@ -10538,6 +10538,20 @@
       "reason": "Ich kann das nicht ausführen, du aber schon.",
       "run_unanswered": "Das Terminal hat nicht geantwortet, also kopiere ihn in die Terminal-App auf deinem Computer.",
       "title": "Selbst ausführen"
+    },
+    "selectionActions": {
+      "apps": "Apps",
+      "apps_hint": "Ausgewählten Text an eine App senden",
+      "item_hint": "Sendet den ausgewählten Text an {{app}}",
+      "menu_label": "Apps für den ausgewählten Text",
+      "close": "Schließen",
+      "copy": "Kopieren",
+      "copied": "Kopiert",
+      "open": "{{host}} öffnen",
+      "no_response": "{{app}} hat nicht geantwortet.",
+      "failed": "{{app}} hatte ein Problem: {{message}}",
+      "too_short": "Wähle mehr Text aus, um {{title}} zu verwenden.",
+      "copy_failed": "Kopieren in die Zwischenablage fehlgeschlagen."
     }
   },
   "hooks": {
@@ -10921,7 +10935,8 @@
       "grants_reconsent_link_hosts": "Link-Hosts: erlaubt den Hover-Karten der App, Links zu diesen Seiten in Chat-Nachrichten zu sehen.",
       "grants_reconsent_link_patterns": "Textmuster: erlaubt den Hover-Karten der App, Chat-Text zu sehen, auf den diese Muster passen.",
       "grants_reconsent_link_full_url": "Vollständige Linkadressen: Die Hover-Karten der App sehen auch den Teil eines Links nach ? oder #, der einen Anmeldecode enthalten kann.",
-      "grants_approved": "Genehmigt: {{entries}}. Die App kann sie jetzt nutzen."
+      "grants_approved": "Genehmigt: {{entries}}. Die App kann sie jetzt nutzen.",
+      "grants_reconsent_selection_actions": "Aktionen für ausgewählten Text: Die Einträge der App erhalten Text, den du in Chat-Antworten auswählst, und können ein Ergebnis zum Kopieren oder Öffnen anbieten."
     },
     "appPage": {
       "loading_app": "App wird geladen…",

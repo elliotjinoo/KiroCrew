@@ -10702,6 +10702,20 @@
       "reason": "Io non posso eseguirlo, ma tu sì.",
       "run_unanswered": "Il terminale non ha risposto, quindi copialo nell'app Terminale del tuo computer.",
       "title": "Eseguilo tu"
+    },
+    "selectionActions": {
+      "apps": "App",
+      "apps_hint": "Invia il testo selezionato a un'app",
+      "item_hint": "Invia il testo selezionato a {{app}}",
+      "menu_label": "App per il testo selezionato",
+      "close": "Chiudi",
+      "copy": "Copia",
+      "copied": "Copiato",
+      "open": "Apri {{host}}",
+      "no_response": "{{app}} non ha risposto.",
+      "failed": "{{app}} ha avuto un problema: {{message}}",
+      "too_short": "Seleziona più testo per usare {{title}}.",
+      "copy_failed": "Impossibile copiare negli appunti."
     }
   },
   "hooks": {
@@ -11087,7 +11101,8 @@
       "grants_reconsent_link_hosts": "Host dei link: consente alle schede dell’app di vedere i link a questi siti nei messaggi della chat.",
       "grants_reconsent_link_patterns": "Modelli di testo: consente alle schede dell’app di vedere il testo della chat che corrisponde a questi modelli.",
       "grants_reconsent_link_full_url": "Indirizzi completi dei link: le schede dell’app vedono anche la parte di un link dopo ? o #, che può contenere un codice di accesso.",
-      "grants_approved": "Approvate: {{entries}}. L'app può usarle da ora."
+      "grants_approved": "Approvate: {{entries}}. L'app può usarle da ora.",
+      "grants_reconsent_selection_actions": "Azioni sul testo selezionato: gli elementi dell'app ricevono il testo che selezioni nelle risposte della chat e possono offrire un risultato da Copiare o Aprire."
     },
     "appPage": {
       "loading_app": "Caricamento dell'app…",

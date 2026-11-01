@@ -763,6 +763,14 @@ _BOOTSTRAP = _RUNTIME + _INVOCATION + _LINK_PREVIEW_POINT
 # Registered points. A new frame-backed point adds its resolver and script here.
 register_frame_point("linkPreviews", _resolve_link_preview, _LINK_PREVIEW_POINT)
 
+from kiro_crew.apps.selection_action_frame import (  # noqa: E402
+    SELECTION_ACTION_SCRIPT,
+    SELECTION_ACTIONS_POINT,
+    resolve_selection_action,
+)
+
+register_frame_point(SELECTION_ACTIONS_POINT, resolve_selection_action, SELECTION_ACTION_SCRIPT)
+
 
 __all__: list[str] = [
     "CAPABILITY_HEADER",

@@ -61,7 +61,11 @@ from kiro_crew.apps.manifest_contributes import (  # noqa: F401
     MAX_LINK_PREVIEW_TEXT_PATTERN_LEN,
     MAX_LINK_PREVIEW_TEXT_PATTERNS,
     MAX_LINK_PREVIEWS_PER_APP,
+    MAX_SELECTION_ACTIONS_PER_APP,
+    MAX_SELECTION_TEXT,
     MAX_SESSION_CONTROLS_PER_APP,
+    SELECTION_EFFECTS,
+    SELECTION_SOURCES,
     CommandArgument,
     CommandContribution,
     Contributes,
@@ -69,6 +73,7 @@ from kiro_crew.apps.manifest_contributes import (  # noqa: F401
     FileMenuWhen,
     LinkPreviewConfig,
     PanelTabConfig,
+    SelectionActionConfig,
     SessionControlContribution,
     _mirrored_len,
     _normalize_status_path,
@@ -520,6 +525,13 @@ class AppManifest:
             refusal = path_refusal(preview.entry)
             if refusal:
                 report_path(refusal, f"contributes.linkPreviews entry {refusal}: {preview.entry!r}")
+        # So is a selection action's.
+        for action in self.contributes.selectionActions:
+            refusal = path_refusal(action.entry)
+            if refusal:
+                report_path(
+                    refusal, f"contributes.selectionActions entry {refusal}: {action.entry!r}"
+                )
 
         # UI page validation
         for page in self.ui.pages:
@@ -757,6 +769,7 @@ class AppManifest:
             # A link-preview `entry` is an ESM module the dashboard imports and runs
             # in its own origin, like a panel tab's: same reason to sign it.
             or self.contributes.linkPreviews
+            or self.contributes.selectionActions
         ):
             # A contributed command's `prompt` is sent to an agent with tools as if
             # the reader typed it, and `autoSend` fires it without a further

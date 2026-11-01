@@ -40,6 +40,7 @@ const GuideLayer = lazy(() => import('./guide/GuideLayer'))
 // App-contributed link previews (`contributes.linkPreviews`): hover detection only;
 // an app's module loads on the first hover of one of its links.
 const LinkPreviewLayer = lazy(() => import('./linkPreview/LinkPreviewLayer'))
+const SelectionActionLayer = lazy(() => import('./selectionActions/SelectionActionLayer'))
 // Lazy for the same reason: the crew work-item board is opened from a conductor
 // session or the Crew page, never at startup.
 const CrewBoardPage = lazy(() => import('./pages/CrewBoardPage'))
@@ -827,6 +828,7 @@ export default function App() {
           <GuideProvider>
           <Suspense fallback={null}><GuideLayer /></Suspense>
           <Suspense fallback={null}><LinkPreviewLayer /></Suspense>
+          <Suspense fallback={null}><SelectionActionLayer /></Suspense>
           <Routes>
             <Route path="/chat/:slug?" element={<ErrorBoundary><ChatPage /></ErrorBoundary>} />
             <Route path="/orchestrated/:slug?" element={<OrchestratedRedirect />} />

@@ -10702,6 +10702,20 @@
       "reason": "Eu não posso executar isto, mas você pode.",
       "run_unanswered": "O terminal não respondeu, então copie para o aplicativo Terminal do seu computador.",
       "title": "Execute você mesmo"
+    },
+    "selectionActions": {
+      "apps": "Apps",
+      "apps_hint": "Enviar o texto selecionado para um app",
+      "item_hint": "Envia o texto selecionado para {{app}}",
+      "menu_label": "Apps para o texto selecionado",
+      "close": "Fechar",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "open": "Abrir {{host}}",
+      "no_response": "{{app}} não respondeu.",
+      "failed": "{{app}} teve um problema: {{message}}",
+      "too_short": "Selecione mais texto para usar {{title}}.",
+      "copy_failed": "Não foi possível copiar para a área de transferência."
     }
   },
   "hooks": {
@@ -11087,7 +11101,8 @@
       "grants_reconsent_link_hosts": "Hosts de links: permite que os cartões do app vejam links para estes sites nas mensagens do chat.",
       "grants_reconsent_link_patterns": "Padrões de texto: permite que os cartões do app vejam o texto do chat que corresponde a estes padrões.",
       "grants_reconsent_link_full_url": "Endereços de link completos: os cartões do app também veem a parte de um link depois de ? ou #, que pode conter um código de login.",
-      "grants_approved": "Aprovadas: {{entries}}. O app já pode usá-las."
+      "grants_approved": "Aprovadas: {{entries}}. O app já pode usá-las.",
+      "grants_reconsent_selection_actions": "Ações sobre texto selecionado: permite que os itens do app recebam o texto que você seleciona nas respostas do chat e ofereçam um resultado para Copiar ou Abrir."
     },
     "appPage": {
       "loading_app": "Carregando app…",

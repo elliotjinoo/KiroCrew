@@ -10702,6 +10702,20 @@
       "reason": "Je ne peux pas exécuter ceci, mais toi, tu peux.",
       "run_unanswered": "Le terminal n'a pas répondu, alors copie-la dans l'application Terminal de ton ordinateur.",
       "title": "À lancer toi-même"
+    },
+    "selectionActions": {
+      "apps": "Apps",
+      "apps_hint": "Envoyer le texte sélectionné à une app",
+      "item_hint": "Envoie le texte sélectionné à {{app}}",
+      "menu_label": "Apps pour le texte sélectionné",
+      "close": "Fermer",
+      "copy": "Copier",
+      "copied": "Copié",
+      "open": "Ouvrir {{host}}",
+      "no_response": "{{app}} n'a pas répondu.",
+      "failed": "{{app}} a rencontré un problème : {{message}}",
+      "too_short": "Sélectionnez plus de texte pour utiliser {{title}}.",
+      "copy_failed": "Impossible de copier dans le presse-papiers."
     }
   },
   "hooks": {
@@ -11087,7 +11101,8 @@
       "grants_reconsent_link_hosts": "Hôtes de liens : permet aux cartes de survol de l’app de voir les liens vers ces sites dans les messages du chat.",
       "grants_reconsent_link_patterns": "Motifs de texte : permet aux cartes de survol de l’app de voir le texte du chat qui correspond à ces motifs.",
       "grants_reconsent_link_full_url": "Adresses de lien complètes : les cartes de survol de l’app voient aussi la partie d’un lien après « ? » ou « # », qui peut contenir un code de connexion.",
-      "grants_approved": "Approuvées : {{entries}}. L’app peut les utiliser dès maintenant."
+      "grants_approved": "Approuvées : {{entries}}. L’app peut les utiliser dès maintenant.",
+      "grants_reconsent_selection_actions": "Actions sur le texte sélectionné : permet aux éléments de l'app de recevoir le texte que vous sélectionnez dans les réponses du chat et de proposer un résultat à Copier ou Ouvrir."
     },
     "appPage": {
       "loading_app": "Chargement de l'application…",

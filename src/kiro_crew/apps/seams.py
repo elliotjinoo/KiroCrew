@@ -4,7 +4,8 @@ Some core features need something only an app ships. The MicroVM remote-crew lan
 builds its image from the crew container runtime the aws-control app carries. The
 paid-service consent cards and the composer's project pill resolve an AWS profile
 through that app's account policy. The MicroVM control calls stage a secret under
-the app's sandbox-masked transfer root. Core names each such need as a SEAM here and
+the app's sandbox-masked transfer root. The chat create paths accept the slot mode an
+app's throwaway worker slots are born with. Core names each such need as a SEAM here and
 asks for its provider when it runs. The app registers the provider, and core never
 imports the app, so the app can leave this repository without core changing.
 
@@ -27,7 +28,9 @@ worked with aws-control switched off, which is its default, and a seam must not
 change what they do.
 
 One provider per seam. A second app that registers a seam another app already holds
-is refused, because otherwise the answer would depend on import order.
+is refused, because otherwise the answer would depend on import order. Worker slot
+modes are the one seam every app may fill: each app registers its own, under its own
+id, through :func:`register_worker_slot_mode`.
 """
 
 from __future__ import annotations
@@ -53,6 +56,12 @@ SEAM_TRANSFER_STAGING = "transfer_staging"
 
 #: The module a builtin app ships at its package root to register its providers.
 BUILTIN_SEAMS_MODULE = "seams"
+
+#: Slot modes the core gives a meaning of its own, so no app may register one: ``""`` is
+#: ordinary chat, ``"member"`` (``members.DM_SLOT_MODE``) is a crew member's DM thread,
+#: and ``"crew"`` / ``"orchestrator"`` are retired modes a restored slot folds back to
+#: ``""``.
+CORE_SLOT_MODES = frozenset({"", "member", "crew", "orchestrator"})
 
 
 class CrewRuntime(Protocol):
@@ -98,6 +107,8 @@ class TransferStaging(Protocol):
 _lock = threading.Lock()
 #: seam -> (app id, provider).
 _providers: dict[str, tuple[str, object]] = {}
+#: app id -> the worker slot mode it registered, in registration order.
+_worker_slot_modes: dict[str, str] = {}
 #: Serializes the one-time import of the builtin seams modules. :func:`register`
 #: never takes it, so a provider module can register while it is held. A seams
 #: module must therefore only register while it is imported, never look a seam up.
@@ -144,6 +155,35 @@ def aws_account_policy() -> AwsAccountPolicy | None:
 def transfer_staging() -> TransferStaging | None:
     """The :data:`SEAM_TRANSFER_STAGING` provider, or ``None``."""
     return cast("TransferStaging | None", provider(SEAM_TRANSFER_STAGING))
+
+
+def register_worker_slot_mode(app_id: str) -> None:
+    """Let the chat create paths accept *app_id* as the mode of that app's worker slots.
+
+    A slot's ``mode`` is fixed when it is created, and the chat sidebar lists only
+    ``""`` slots, so an app whose throwaway worker slots must stay off the sidebar
+    creates them under a mode of its own. That mode is the app's own id, so one app
+    cannot claim another's, and :data:`CORE_SLOT_MODES` are refused whatever the app
+    is called. Registering again is a no-op.
+    """
+    if not isinstance(app_id, str):
+        raise ValueError(f"a worker slot mode must be a str, not {type(app_id).__name__}")
+    if app_id in CORE_SLOT_MODES:
+        raise ValueError(f"app {app_id!r} cannot register a worker slot mode the core owns")
+    with _lock:
+        _worker_slot_modes[app_id] = app_id
+
+
+def worker_slot_modes() -> tuple[str, ...]:
+    """Every registered worker slot mode, builtins in ``BUILTIN_NAMES`` order.
+
+    ``dashboard.chat_handlers`` reads it once, at import, so only a builtin's seams
+    module reaches the create paths: it is loaded by the first lookup, before any
+    installed app runs. Empty when no app registered one.
+    """
+    _load_builtin_seams()
+    with _lock:
+        return tuple(_worker_slot_modes.values())
 
 
 def _load_builtin_seams() -> None:

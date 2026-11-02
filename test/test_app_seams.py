@@ -68,6 +68,54 @@ class TestTheRegistry:
         assert seams.provider("probe") == 1
 
 
+@pytest.fixture()
+def slot_modes(monkeypatch):
+    """The real worker slot modes with the shipped builtins loaded, restored after the test."""
+    seams.worker_slot_modes()
+    monkeypatch.setattr(seams, "_worker_slot_modes", dict(seams._worker_slot_modes))
+    return seams._worker_slot_modes
+
+
+class TestWorkerSlotModes:
+    """The one seam every app may fill: each app registers its own id as a slot mode."""
+
+    def test_each_app_registers_its_own_mode_in_order(self, slot_modes):
+        slot_modes.clear()
+        seams.register_worker_slot_mode("zeta-app")
+        seams.register_worker_slot_mode("alpha-app")
+        assert seams.worker_slot_modes() == ("zeta-app", "alpha-app")
+
+    def test_registering_again_is_a_no_op(self, slot_modes):
+        slot_modes.clear()
+        seams.register_worker_slot_mode("some-app")
+        seams.register_worker_slot_mode("some-app")
+        assert seams.worker_slot_modes() == ("some-app",)
+
+    def test_no_registration_means_no_worker_mode(self, slot_modes):
+        slot_modes.clear()
+        assert seams.worker_slot_modes() == ()
+
+    @pytest.mark.parametrize("app_id", ["", "member", "crew", "orchestrator"])
+    def test_a_mode_the_core_owns_is_refused(self, slot_modes, app_id):
+        with pytest.raises(ValueError, match="the core owns"):
+            seams.register_worker_slot_mode(app_id)
+        assert app_id not in seams.worker_slot_modes()
+
+    def test_a_non_string_id_is_refused(self, slot_modes):
+        with pytest.raises(ValueError, match="must be a str"):
+            seams.register_worker_slot_mode(("some-app",))  # type: ignore[arg-type]
+
+    def test_the_core_modes_include_the_member_thread_mode(self):
+        from kiro_crew.members import DM_SLOT_MODE
+
+        assert DM_SLOT_MODE in seams.CORE_SLOT_MODES
+
+    def test_the_chat_create_paths_read_the_seam(self):
+        from kiro_crew.dashboard import chat_handlers
+
+        assert chat_handlers._CREATABLE_MODES == ("", *seams.worker_slot_modes())
+
+
 class TestTheShippedProviders:
     def test_aws_control_provides_all_three_seams(self):
         seams.crew_runtime()

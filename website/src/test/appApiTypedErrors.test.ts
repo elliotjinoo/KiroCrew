@@ -5,12 +5,11 @@
  * body reached the UI as raw wire JSON and no caller could branch on the status.
  * These assertions are per-client on purpose: the bug was four independent
  * copies of the same mistake, so one shared-helper test would not catch a single
- * client drifting back. The Files app's client is pinned the same way in its own
- * directory (`apps/file-explorer/api.typedErrors.test.ts`).
+ * client drifting back. An app whose tests live in its own directory pins its
+ * row there.
  */
 import { ApiError } from '../api/apiError'
 import { api as designTweakApi } from '../apps/design-tweak/api'
-import { designCritiqueApi } from '../apps/design-critique/api'
 import { getWatchlist } from '../apps/mochi/api'
 
 /** A refusal whose body is the JSON envelope the backends actually send. */
@@ -48,11 +47,6 @@ describe('app API clients surface refusals as ApiError', () => {
     await expectTypedRefusal(() => designTweakApi.get('/projects'))
   })
 
-  it('design-critique', async () => {
-    vi.stubGlobal('fetch', refuse())
-    await expectTypedRefusal(() => designCritiqueApi.getSlot('slot-1'))
-  })
-
   it('mochi', async () => {
     vi.stubGlobal('fetch', refuse())
     await expectTypedRefusal(() => getWatchlist())
@@ -79,7 +73,6 @@ describe('app API clients surface refusals as ApiError', () => {
     // must read exactly as it did before the change.
     for (const call of [
       () => designTweakApi.get('/projects'),
-      () => designCritiqueApi.getSlot('slot-1'),
       () => getWatchlist(),
     ]) {
       vi.stubGlobal('fetch', refuse(500, ''))

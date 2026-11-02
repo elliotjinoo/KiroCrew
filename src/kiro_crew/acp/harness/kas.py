@@ -69,7 +69,7 @@ from kiro_crew.acp.types import (
 from kiro_crew.agent import ForkGovernanceUnresolved
 from kiro_crew.config import paths as paths_mod
 from kiro_crew.kiro_cli import chat_sibling, installed_kiro_cli_version
-from kiro_crew.mate_worker import MATE_WORKER_AGENT
+from kiro_crew.mate_worker import MATE_CONDUCTOR_AGENT, MATE_WORKER_AGENT
 from kiro_crew.mcp_gateway import session_servers as session_servers_mod
 from kiro_crew.platform.tool_names import kas_verified_releases, kas_vocabulary_drift
 
@@ -735,6 +735,17 @@ class KasHarness(MembershipHarness):
                 except WorkerKitUnreadable as exc:
                     # Refused, never the bare base: what could not be read may
                     # hold the crewmate's own limits.
+                    raise AcpAgentUnavailable(str(exc), agent=agent) from exc
+            elif agent == MATE_CONDUCTOR_AGENT:
+                # A crewmate's own chat: the stock conductor plus that crewmate's
+                # hooks, permissions, tool settings and tool limits, the ones its
+                # worker runs under (``mate_spec_policy``).
+                from kiro_crew.mate_spec_policy import conductor_session_spec
+                from kiro_crew.mate_worker import WorkerKitUnreadable
+
+                try:
+                    spec = conductor_session_spec(spec, session_key)
+                except WorkerKitUnreadable as exc:
                     raise AcpAgentUnavailable(str(exc), agent=agent) from exc
             try:
                 # A session-injected server outranks an agent-declared one, so

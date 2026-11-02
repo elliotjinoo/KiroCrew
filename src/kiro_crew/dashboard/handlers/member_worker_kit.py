@@ -39,4 +39,7 @@ async def api_member_worker_kit(request: web.Request) -> web.Response:
         request.app["state"].push_refresh("agents")
         return web.json_response(result)
     except WorkerKitError as exc:
-        return web.json_response({"error": exc.code, "code": exc.code}, status=exc.status)
+        payload = {"error": exc.code, "code": exc.code}
+        if exc.detail:
+            payload["detail"] = exc.detail
+        return web.json_response(payload, status=exc.status)

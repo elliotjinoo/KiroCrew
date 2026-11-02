@@ -4019,9 +4019,29 @@ runs the agent it recorded. A `template` record (a worker included) stays exact
   the merge sets `disabled: true` on the BASE's own entry -- its transport is never
   the file's -- and drops every `allowedTools` grant on that server. The KAS
   projection does not declare a muted entry (`kas_agents._project_mcp_servers`), so
-  the worker does not launch it (`test/test_mate_worker_disabled_servers.py`). Every
-  other field (`tools` for built-ins, `model`, `permissions`, `hooks`) is
-  ignored. **Per-tool limits are hidden, never a refusal:** every
+  the worker does not launch it (`test/test_mate_worker_disabled_servers.py`).
+  **`hooks`, `permissions` and `toolsSettings` are carried exactly**
+  (`mate_spec_policy.layer_policy`): each hook is added beside the base's, each
+  permission rule beside the base's rules, and a `toolsSettings` entry is copied
+  whole for a tool the base sets nothing for. One that cannot land as written (an
+  entry for a tool the base sets differently, a `permissions` block KAS would
+  refuse whole) raises `SpecPolicyUncarried`, a `WorkerKitUnreadable`, so the
+  worker is refused, naming it. A host that applies none of the three
+  (`mate_spec_policy.applies_spec_policy`, KAS only) refuses a file
+  that sets any (`resolve_worker_spec(refuse_spec_policy=True)`). Every other
+  field (`tools` for built-ins, `model`) is ignored. **The conductor carries the
+  same policy:** a crewmate's chat on KAS runs the stock conductor with the
+  file's `hooks`, `permissions`, `toolsSettings`, `excludedTools` and per-server
+  `disabledTools` layered on per session (`mate_spec_policy.conductor_session_spec`,
+  read from the session's execution record, called by KAS's projection and the
+  mirrored hosts' `session_mcp_projection`); nothing the file adds (prompt,
+  servers, skills, `allowedTools`) reaches it, and a restriction that would take
+  a hand-off tool (`mate_spec_policy.CONDUCTOR_REQUIRED_TOOLS` the stock
+  conductor mounts) refuses the chat naming the rule. Crew fires each session's
+  merged spec's hooks on KAS (`spec_hooks._agent_spec` with the session key, via
+  `mate_worker.mate_service_scope_spec`). Owner decision:
+  `docs/decisions/2026-11-02-a-crewmates-conductor-and-worker-carry-its-template-policy.md`.
+  **Per-tool limits are hidden, never a refusal:** every
   `mcpServers.<name>.disabledTools` entry -- the base's own and the file's,
   for any server the file names, a base server included -- becomes an
   `@<name>/<tool>` entry in the merged spec's `excludedTools`
@@ -4198,9 +4218,16 @@ plus every auto-approval the add writes
 (`allowedTools` rows, from either channel) and every tool the template newly
 excludes. The apply needs the preview's `revision` (`_plan_revision`, binding
 the file and the result shown) or answers `stale_revision`. The template's
-`excludedTools` join the file's. A template with `permissions` deny/ask rules,
-`toolsSettings` or hooks the worker would not carry (`uncarried_restrictions`)
-is refused `template_restrictions_uncarried`. Other refusals: `not_a_mate_file`,
+`excludedTools` join the file's, and its `hooks`, `permissions` and
+`toolsSettings` are layered into the file (`mate_worker_kit._carry_policy`) and
+listed as `hooks` / `permissions` / `toolsSettings` preview rows, since they run
+on the crewmate's chat too. The add is refused, with a `detail` naming the
+field or rule: `template_restrictions_uncarried` when one cannot be kept
+exactly (`uncarried_restrictions`, `toolsSettings.<tool>` for one tool's entry),
+`template_policy_backend_unsupported` when the crewmate's backend
+(`mate_worker.crewmate_worker_backend`) is not KAS, and
+`template_blocks_conductor_tool` when a restriction would take a hand-off tool
+from the conductor. Other refusals: `not_a_mate_file`,
 `template_unreadable`, `template_required`, `revision_required`,
 `invalid_spec`. Each code reads as a localized sentence
 (`components/crew/workerKitErrors.ts`), never as the code. The surface is **Add

@@ -38,12 +38,17 @@ KIT_KEYS = (*_ADDED_KEYS, "tools")
 
 
 class WorkerKitError(Exception):
-    """A worker-kit request that cannot be served; ``code`` is the wire code."""
+    """A worker-kit request that cannot be served; ``code`` is the wire code.
 
-    def __init__(self, code: str, status: int = 409) -> None:
+    ``detail`` names what the refusal is about (a field, a rule), for the
+    sentence the dashboard shows; ``""`` when the code says it all.
+    """
+
+    def __init__(self, code: str, status: int = 409, *, detail: str = "") -> None:
         super().__init__(code)
         self.code = code
         self.status = status
+        self.detail = detail
 
 
 def _digest(value: Any) -> str:
@@ -298,6 +303,11 @@ def _plan(member: str, body: Any) -> tuple[Path, dict[str, Any], dict[str, Any],
     ``excludedTools`` and its per-server ``disabledTools`` join the file's
     ``excludedTools``, and a base server it switches off is written as
     ``{"disabled": true}`` unless the file holds its own entry for that server.
+    Its ``hooks``, ``permissions`` and ``toolsSettings`` are layered on exactly
+    (``mate_spec_policy``); they run on the crewmate's chat and worker alike, so
+    the add is refused, naming the field, when one cannot be kept exactly, when
+    the crewmate's backend cannot apply them, or when a restriction would take a
+    tool from the chat that it needs to hand work off.
     """
     from kiro_crew.mate_config import (
         MateConfigError,
@@ -314,9 +324,10 @@ def _plan(member: str, body: Any) -> tuple[Path, dict[str, Any], dict[str, Any],
         source = _resolved_source_spec(template)
     except MateConfigError as exc:
         raise WorkerKitError("template_unreadable") from exc
-    if uncarried_restrictions(source):
-        # Its permissions or toolsSettings limits would not reach the worker.
-        raise WorkerKitError("template_restrictions_uncarried")
+    lost = uncarried_restrictions(source)
+    if lost:
+        # A restriction the worker would not keep exactly.
+        raise WorkerKitError("template_restrictions_uncarried", detail=", ".join(lost))
 
     base = _worker_base_or_none()
     new_spec = copy_json_document(spec)
@@ -382,9 +393,125 @@ def _plan(member: str, body: Any) -> tuple[Path, dict[str, Any], dict[str, Any],
                 servers[name] = {"disabled": True}
         new_spec["mcpServers"] = servers
 
+    _carry_policy(member, new_spec, source)
     new_spec["name"] = member
     sanitize_agent_config_governance(new_spec)
     return path, spec, new_spec, template, tkit
+
+
+def _carry_policy(member: str, new_spec: dict[str, Any], source: dict[str, Any]) -> None:
+    """Layer *source*'s hooks, permissions and tool settings into the file *new_spec*.
+
+    Refused, naming what, when they cannot be kept exactly on the worker
+    (``template_restrictions_uncarried``), when the crewmate's backend applies
+    none of them (``template_policy_backend_unsupported``), or when one would take
+    a tool from the crewmate's chat that it needs (``template_blocks_conductor_tool``).
+    """
+    from kiro_crew.mate_spec_policy import (
+        SpecPolicyUncarried,
+        apply_conductor_overlay,
+        backend_refusal,
+        conductor_overlay,
+        layer_policy,
+        policy_of,
+    )
+    from kiro_crew.mate_worker import merge_worker_spec, worker_additions
+
+    carried = policy_of(source)
+    if not carried:
+        return
+    try:
+        layer_policy(new_spec, carried)
+    except SpecPolicyUncarried as exc:
+        raise WorkerKitError(
+            "template_restrictions_uncarried", detail=", ".join(exc.fields)
+        ) from exc
+    held = policy_of(new_spec)
+    if backend_refusal(held, _crewmate_backend(member, held)):
+        raise WorkerKitError("template_policy_backend_unsupported", detail=", ".join(sorted(held)))
+    base = _worker_base_or_none()
+    if base is not None:
+        try:
+            merge_worker_spec(base, worker_additions(base, new_spec))
+        except SpecPolicyUncarried as exc:
+            raise WorkerKitError(
+                "template_restrictions_uncarried", detail=", ".join(exc.fields)
+            ) from exc
+    conductor = _conductor_base_or_none()
+    if conductor is None:
+        # Checked again when the chat starts (``conductor_session_spec``).
+        return
+    try:
+        apply_conductor_overlay(conductor, conductor_overlay(new_spec))
+    except SpecPolicyUncarried as exc:
+        code = (
+            "template_blocks_conductor_tool"
+            if any("(blocks " in field for field in exc.fields)
+            else "template_restrictions_uncarried"
+        )
+        raise WorkerKitError(code, detail="; ".join(exc.fields)) from exc
+
+
+def _crewmate_backend(member: str, held: dict[str, Any]) -> str:
+    """The backend crewmate *member*'s chat and worker run on."""
+    from kiro_crew.config.loader import KiroCrewConfig
+    from kiro_crew.mate_worker import crewmate_worker_backend
+
+    try:
+        return crewmate_worker_backend(KiroCrewConfig.load(), member)
+    except Exception as exc:  # noqa: BLE001 - an unstartable pin applies nothing
+        logger.warning("backend of %s unresolved; refusing its policy", member, exc_info=True)
+        raise WorkerKitError(
+            "template_policy_backend_unsupported", detail=", ".join(sorted(held))
+        ) from exc
+
+
+def _conductor_base_or_none() -> dict[str, Any] | None:
+    """The stock conductor spec, ``None`` when it cannot be read."""
+    from kiro_crew.agent_sdk import agent_specs
+    from kiro_crew.config import paths as paths_mod
+    from kiro_crew.mate_worker import MATE_CONDUCTOR_AGENT
+
+    try:
+        return agent_specs.load_agent_spec(paths_mod.mate_agents_dir(), MATE_CONDUCTOR_AGENT)
+    except agent_specs.AgentSpecUnreadable:
+        return None
+
+
+def _policy_ids(spec: dict[str, Any]) -> set[tuple[str, str]]:
+    """``(section, id)`` per hook, permission rule and tool setting *spec* holds."""
+    from kiro_crew.mate_spec_policy import policy_of
+
+    out: set[tuple[str, str]] = set()
+    policy = policy_of(spec)
+    hooks = policy.get("hooks")
+    for event, entries in (hooks if isinstance(hooks, dict) else {}).items():
+        for entry in entries if isinstance(entries, list) else [entries]:
+            matcher = entry.get("matcher") if isinstance(entry, dict) else None
+            command = entry.get("command") if isinstance(entry, dict) else None
+            out.add(("hooks", f"{event}: {matcher or command or _digest(entry)[:8]}"))
+    perms = policy.get("permissions")
+    rules = perms.get("rules") if isinstance(perms, dict) else None
+    for rule in rules if isinstance(rules, list) else []:
+        if isinstance(rule, dict):
+            match = ", ".join(str(m) for m in rule.get("match") or []) or "*"
+            out.add(("permissions", f"{rule.get('effect')} {rule.get('capability')} {match}"))
+    settings = policy.get("toolsSettings")
+    for tool in settings if isinstance(settings, dict) else {}:
+        out.add(("toolsSettings", str(tool)))
+    return out
+
+
+def _policy_changes(before: dict[str, Any], after: dict[str, Any]) -> list[dict[str, str]]:
+    """One row per hook, permission rule and tool setting the add writes.
+
+    These run on the crewmate's chat as well as its worker, grants included, so
+    the owner sees each one before applying.
+    """
+    return [
+        {"section": section, "id": ident, "change": "added"}
+        for section, ident in sorted(_policy_ids(after) - _policy_ids(before))
+    ]
 
 
 def _worker_kit(spec: dict[str, Any], base: dict[str, Any] | None) -> dict[str, Any]:
@@ -528,6 +655,7 @@ def preview(member: str, body: Any) -> dict[str, Any]:
             *_skipped(tkit, spec, base),
             *_exclusion_changes(spec, new_spec),
             *_muted_server_changes(spec, new_spec),
+            *_policy_changes(spec, new_spec),
         ],
     }
 

@@ -4,9 +4,11 @@ Some core features need something only an app ships. The MicroVM remote-crew lan
 builds its image from the crew container runtime the aws-control app carries. The
 paid-service consent cards and the composer's project pill resolve an AWS profile
 through that app's account policy. The MicroVM control calls stage a secret under
-the app's sandbox-masked transfer root. Core names each such need as a SEAM here and
-asks for its provider when it runs. The app registers the provider, and core never
-imports the app, so the app can leave this repository without core changing.
+the app's sandbox-masked transfer root. A stop of a legacy autonudge loop asks the
+app that owns the slot whether it reads the stopped row. Core names each such need as
+a SEAM here and asks for its provider when it runs. The app registers the provider,
+and core never imports the app, so the app can leave this repository without core
+changing.
 
 Empty by default. A seam that no app filled answers ``None``. Each core caller's own
 docstring says what it does then: degrade to a fixed answer, or refuse.
@@ -14,7 +16,7 @@ docstring says what it does then: degrade to a fixed answer, or refuse.
 How a provider gets here:
 
 * A builtin app ships a ``seams.py`` at its package root that calls :func:`register`
-  when it is imported. The first lookup imports every such module once, for each name
+  (or :func:`register_for_app`) when it is imported. The first lookup imports every such module once, for each name
   in ``BUILTIN_NAMES``. A seam therefore answers the same in the gateway, in a CLI
   process and in a test, whatever was imported first. Core callers that never load
   the app's backend import that module, so it must stay light: heavy imports belong
@@ -23,11 +25,16 @@ How a provider gets here:
   :func:`register` itself.
 
 A provider answers whether or not its app is ENABLED. Every core feature above
-worked with aws-control switched off, which is its default, and a seam must not
-change what they do.
+worked with its app switched off, which is the default, and a seam must not change
+what they do.
 
 One provider per seam. A second app that registers a seam another app already holds
 is refused, because otherwise the answer would depend on import order.
+
+An APP-KEYED seam is the exception: core asks it about one app's own resource, such
+as a chat slot whose persisted provenance names that app, so each app holds its own
+provider under its own id (:func:`register_for_app`, :func:`app_provider`). An app
+that registered none answers ``None``, which is the core's ordinary behaviour.
 """
 
 from __future__ import annotations
@@ -50,6 +57,11 @@ SEAM_AWS_ACCOUNT_POLICY = "aws_account_policy"
 #: A private directory under a root every agent sandbox masks, for a file the AWS
 #: CLI must read by name. Provider: :class:`TransferStaging`.
 SEAM_TRANSFER_STAGING = "transfer_staging"
+
+#: App-keyed. Whether a stopped legacy autonudge loop on one of the app's own chat
+#: slots is kept as a tombstone row instead of being removed. Provider:
+#: :class:`StoppedLoopTombstone`.
+SEAM_STOPPED_LOOP_TOMBSTONE = "stopped_loop_tombstone"
 
 #: The module a builtin app ships at its package root to register its providers.
 BUILTIN_SEAMS_MODULE = "seams"
@@ -92,12 +104,28 @@ class TransferStaging(Protocol):
         ...
 
 
-#: Guards :data:`_providers`. Never held across an import: a seams module being
+class StoppedLoopTombstone(Protocol):
+    """Which of an app's own slots keep a stopped legacy loop for the app to read."""
+
+    def keeps_stopped_loop(self, slot_key: str) -> bool:
+        """Whether a stop of the legacy loop bound to *slot_key* leaves its row behind.
+
+        Asked only for a slot whose persisted app provenance is the provider's app, so
+        a slot a person named the same way is never the app's. ``True`` deactivates
+        the loop with ``AUTONUDGE_STOP_REASON``, which the app reads as a deliberate
+        finish. ``False`` removes it, as for every other legacy loop.
+        """
+        ...
+
+
+#: Guards :data:`_providers` and :data:`_app_providers`. Never held across an import: a seams module being
 #: imported on another thread takes it in :func:`register` while it holds that
 #: module's import lock.
 _lock = threading.Lock()
 #: seam -> (app id, provider).
 _providers: dict[str, tuple[str, object]] = {}
+#: (app-keyed seam, app id) -> provider.
+_app_providers: dict[tuple[str, str], object] = {}
 #: Serializes the one-time import of the builtin seams modules. :func:`register`
 #: never takes it, so a provider module can register while it is held. A seams
 #: module must therefore only register while it is imported, never look a seam up.
@@ -129,6 +157,28 @@ def provider(seam: str) -> object | None:
     with _lock:
         held = _providers.get(seam)
     return held[1] if held is not None else None
+
+
+def register_for_app(seam: str, app_id: str, provider: object) -> None:
+    """Make *provider* the answer to the app-keyed *seam* about the app *app_id*.
+
+    Each app holds its own provider, so no app is refused for another's. The same app
+    registering again replaces its own.
+    """
+    with _lock:
+        _app_providers[(seam, app_id)] = provider
+
+
+def app_provider(seam: str, app_id: str) -> object | None:
+    """The provider *app_id* registered for the app-keyed *seam*, or ``None``."""
+    _load_builtin_seams()
+    with _lock:
+        return _app_providers.get((seam, app_id))
+
+
+def stopped_loop_tombstone(app_id: str) -> StoppedLoopTombstone | None:
+    """The :data:`SEAM_STOPPED_LOOP_TOMBSTONE` provider of the app *app_id*, or ``None``."""
+    return cast("StoppedLoopTombstone | None", app_provider(SEAM_STOPPED_LOOP_TOMBSTONE, app_id))
 
 
 def crew_runtime() -> CrewRuntime | None:

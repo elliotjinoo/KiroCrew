@@ -1,7 +1,7 @@
 /**
- * Coverage companion for `src/apps/auto-research/ResearchLabPage.tsx`.
+ * Coverage companion for `ResearchLabPage.tsx`.
  *
- * `ResearchLabPage.test.tsx` already pins the breadth of the page: the root
+ * `ResearchLabPage.integration.test.tsx` already pins the breadth of the page: the root
  * list, campaign detail with findings, the delete dialog, and the wizard happy
  * path. This file goes after what that pass never reaches:
  *
@@ -31,9 +31,9 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { Provider } from 'react-redux'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { store } from '../store'
+import { store } from '../../store'
 
-vi.mock('../api/client', () => ({
+vi.mock('../../api/client', () => ({
   api: {
     researchCampaigns: vi.fn(),
     researchCampaign: vi.fn(),
@@ -52,8 +52,8 @@ vi.mock('../api/client', () => ({
   },
 }))
 
-import { api } from '../api/client'
-import ResearchLabPage from '../apps/auto-research/ResearchLabPage'
+import { api } from '../../api/client'
+import ResearchLabPage from './ResearchLabPage'
 
 // Controllable stand-in for the browser's EventSource. The page opens one per
 // campaign detail; jsdom would only ever fail the connection asynchronously,

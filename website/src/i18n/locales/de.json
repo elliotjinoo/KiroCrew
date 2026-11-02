@@ -13582,7 +13582,13 @@
       "needs_configuration_help": "{{provider}} braucht eine einmalige Einrichtung. „OAuth-App konfigurieren“ öffnet eine geführte Einstellungsseite; nichts ändert sich, bis du dort speicherst, und du kannst es später wieder entfernen. Sie führt dich durch die Registrierung einer App bei {{provider}} und die Eingabe von Client ID und Secret.",
       "configure_oauth_app": "OAuth-App konfigurieren",
       "prerequisite_github": "GitHub unterstützt keine dynamische Client-Registrierung, deshalb verwendet „Verbinden“ die unter Einstellungen → OAuth-Apps registrierte GitHub-OAuth-App. Die Zustimmungsseite von GitHub nennt diese App; bestätige sie, um fortzufahren.",
-      "prerequisite_asana": "Asana unterstützt keine dynamische Client-Registrierung, deshalb verwendet „Verbinden“ die unter Einstellungen → OAuth-Apps registrierte Asana-MCP-App. Die Zustimmungsseite von Asana nennt diese App; bestätige sie, um fortzufahren."
+      "prerequisite_asana": "Asana unterstützt keine dynamische Client-Registrierung, deshalb verwendet „Verbinden“ die unter Einstellungen → OAuth-Apps registrierte Asana-MCP-App. Die Zustimmungsseite von Asana nennt diese App; bestätige sie, um fortzufahren.",
+      "prerequisite_gmail": "Google unterstützt keine dynamische Client-Registrierung, deshalb verwendet „Verbinden“ die unter Einstellungen → OAuth-Apps registrierte Google-OAuth-App. Die Zustimmungsseite von Google nennt diese App; bestätige sie, um fortzufahren.",
+      "prerequisite_google_drive": "Google unterstützt keine dynamische Client-Registrierung, deshalb verwendet „Verbinden“ die unter Einstellungen → OAuth-Apps registrierte Google-OAuth-App. Die Zustimmungsseite von Google nennt diese App; bestätige sie, um fortzufahren.",
+      "prerequisite_google_calendar": "Google unterstützt keine dynamische Client-Registrierung, deshalb verwendet „Verbinden“ die unter Einstellungen → OAuth-Apps registrierte Google-OAuth-App. Die Zustimmungsseite von Google nennt diese App; bestätige sie, um fortzufahren.",
+      "prerequisite_google_sheets": "Google unterstützt keine dynamische Client-Registrierung, deshalb verwendet „Verbinden“ die unter Einstellungen → OAuth-Apps registrierte Google-OAuth-App. Die Zustimmungsseite von Google nennt diese App; bestätige sie, um fortzufahren.",
+      "prerequisite_google_docs": "Google unterstützt keine dynamische Client-Registrierung, deshalb verwendet „Verbinden“ die unter Einstellungen → OAuth-Apps registrierte Google-OAuth-App. Die Zustimmungsseite von Google nennt diese App; bestätige sie, um fortzufahren.",
+      "prerequisite_google_slides": "Google unterstützt keine dynamische Client-Registrierung, deshalb verwendet „Verbinden“ die unter Einstellungen → OAuth-Apps registrierte Google-OAuth-App. Die Zustimmungsseite von Google nennt diese App; bestätige sie, um fortzufahren."
     },
     "contextBreakdown": {
       "axis_turn_n": "Zug {{n}}",

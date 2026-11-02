@@ -21272,7 +21272,8 @@
     "managementHintKiroCloud": "Un chat tourne sur un profil dès que tu le choisis dans le menu « Exécuter ce chat sur » à côté de la zone de message. Chaque chat obtient son propre bac à sable cloud Kiro, listé dans Kiro Web (app.kiro.dev) et non ici. Archiver ou supprimer le chat y laisse son bac à sable.",
     "computeSurvivesStopMicroVm": "Pas sûr ? Laisse-le activé, sauf si les fichiers de ce modèle sont perdus quand un espace de travail s’arrête.",
     "kiroCloud": {
-      "replayed": "Impossible de rouvrir la session cloud, une nouvelle session cloud a donc été démarrée en reprenant cette conversation. Les fichiers et modifications de l’ancienne session n’y figurent pas. L’ancienne session reste listée dans Kiro Web (app.kiro.dev).",
+      "replayed": "Impossible de rouvrir la session cloud, une nouvelle session cloud a donc été démarrée en reprenant cette conversation. Les fichiers et modifications de l’ancienne session n’y figurent pas. L’ancienne session n’a pas été supprimée et reste listée dans Kiro Web (app.kiro.dev).",
+      "replaced": "Ce chat s’exécute désormais dans un nouveau bac à sable cloud Kiro. Les fichiers et modifications de l’ancien bac à sable n’y figurent pas. L’ancien bac à sable n’a pas été supprimé et reste listé dans Kiro Web (app.kiro.dev).",
       "title": "Kiro Cloud Sessions",
       "profilesHint": "Profils qui exécutent toute la session dans un bac à sable cloud Kiro : l’agent, ses fichiers et ses commandes. Choisis-en un pour une session depuis le menu d’environnement à côté de la zone de message.",
       "notVerified": "Ces profils ne sont pas vérifiés à l’avance. Si un chat cloud ne peut pas démarrer, le chat en explique la raison.",

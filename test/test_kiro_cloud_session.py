@@ -87,8 +87,15 @@ for line in sys.stdin:
                 "sessionId": params["sessionId"], "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "old replay"}}}})
         if method == "session/load" and os.environ.get("KAS_STUB_HANG_LOAD") == "1":
             continue
+        if method == "session/load" and os.environ.get("KAS_STUB_EMPTY_LOAD") != "1":
+            # KAS replays each earlier turn on a load, marked _meta.kiro.replay; a
+            # load that replays none restored no conversation (require_replay).
+            send({"jsonrpc": "2.0", "method": "session/update", "params": {
+                "sessionId": params["sessionId"], "update": {
+                    "sessionUpdate": "user_message_chunk", "content": {"type": "text", "text": "earlier"},
+                    "_meta": {"kiro": {"replay": True}}}}})
         send({"jsonrpc": "2.0", "id": mid, "result": {
-            "sessionId": params.get("sessionId") or "cloud-session",
+            "sessionId": params.get("sessionId") or os.environ.get("KAS_STUB_NEW_ID") or "cloud-session",
             "modes": {"currentModeId": "vibe",
                       "availableModes": [{"id": "vibe", "name": "vibe"}]},
         }})
@@ -116,9 +123,14 @@ def stub(tmp_path, monkeypatch):
     script = tmp_path / "kas_cloud_stub.py"
     script.write_text(_STUB)
     record = tmp_path / "record.json"
-    launcher = tmp_path / "kiro-cli-stub"
-    launcher.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{script}"\n')
-    launcher.chmod(0o755)
+    if sys.platform == "win32":
+        # cmd.exe runs a .cmd launcher; %* passes the runtime's arguments on.
+        launcher = tmp_path / "kiro-cli-stub.cmd"
+        launcher.write_text(f'@"{sys.executable}" "{script}" %*\r\n', encoding="utf-8")
+    else:
+        launcher = tmp_path / "kiro-cli-stub"
+        launcher.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{script}"\n')
+        launcher.chmod(0o755)
 
     async def fake_bin(*, environ=None, home=None) -> str:
         return str(launcher)
@@ -1766,7 +1778,7 @@ async def test_cloud_resume_fallback_is_logged_and_surfaces_once_in_the_transcri
         # reopen. ``kind`` lets the error card show the localized sentence.
         assert rows[0][0][2] == "error"
         assert "earlier session aren't in it" in rows[0][0][3]
-        assert "still listed in Kiro Web (app.kiro.dev)" in rows[0][0][3]
+        assert "wasn't deleted and is still listed in Kiro Web (app.kiro.dev)" in rows[0][0][3]
         assert rows[0][1]["meta"] == {"kind": "cloud_session_replayed"}
         # The session that could not be reopened is left in Kiro's cloud (the
         # user deletes it from Kiro Web); nothing is deleted here.

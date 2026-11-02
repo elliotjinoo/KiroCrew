@@ -20532,7 +20532,8 @@
     "managementHintKiroCloud": "在消息框旁的“在何处运行此聊天”菜单中选择配置方案后，聊天就在该配置方案上运行。每个聊天都有自己的 Kiro 云沙盒，它列在 Kiro Web (app.kiro.dev) 中，而不是这里。归档或删除聊天后，它的沙盒仍留在那里。",
     "computeSurvivesStopMicroVm": "不确定？保持开启，除非此模板的文件会在工作区停止时丢失。",
     "kiroCloud": {
-      "replayed": "无法重新打开云端会话，因此已启动一个延续此对话的新云端会话。之前会话中的文件和更改不在其中。之前的会话仍列在 Kiro Web (app.kiro.dev) 中。",
+      "replayed": "无法重新打开云端会话，因此已启动一个延续此对话的新云端会话。之前会话中的文件和更改不在其中。之前的会话没有被删除，仍列在 Kiro Web (app.kiro.dev) 中。",
+      "replaced": "此聊天现在运行在一个新的 Kiro 云沙盒中。之前沙盒中的文件和更改不在其中。之前的沙盒没有被删除，仍列在 Kiro Web (app.kiro.dev) 中。",
       "title": "Kiro Cloud Sessions",
       "profilesHint": "在 Kiro 云沙盒中运行整个会话（智能体及其文件和命令）的配置方案。在消息框旁边，用环境菜单为会话选择配置方案。",
       "notVerified": "这些配置方案不会预先检查。云聊天无法启动时，聊天中会说明原因。",

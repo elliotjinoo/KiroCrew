@@ -10417,7 +10417,8 @@
     "managementHintKiroCloud": "A chat runs on a profile once you choose it in the “Run this chat on” menu next to the message box. Each chat gets its own Kiro cloud sandbox, listed in Kiro Web (app.kiro.dev) rather than here. Archiving or deleting the chat leaves its sandbox there.",
     "computeSurvivesStopMicroVm": "Not sure? Leave it on unless this template's files are lost when a workspace stops.",
     "kiroCloud": {
-      "replayed": "Couldn't reopen the cloud session, so a new cloud session started with this conversation carried over. Files and changes from the earlier session aren't in it. The earlier session is still listed in Kiro Web (app.kiro.dev).",
+      "replayed": "Couldn't reopen the cloud session, so a new cloud session started with this conversation carried over. Files and changes from the earlier session aren't in it. The earlier session wasn't deleted and is still listed in Kiro Web (app.kiro.dev).",
+      "replaced": "This chat now runs on a new Kiro Cloud sandbox. Files and changes from the earlier sandbox aren't in it. The earlier sandbox wasn't deleted and is still listed in Kiro Web (app.kiro.dev).",
       "title": "Kiro Cloud Sessions",
       "profilesHint": "Profiles that run the whole session in a Kiro cloud sandbox: the agent, its files and its commands. Choose one for a session from the environment menu beside the message box.",
       "notVerified": "These profiles aren't checked ahead of time. If a cloud chat can't start, the chat explains why.",

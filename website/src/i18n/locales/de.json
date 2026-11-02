@@ -20902,7 +20902,8 @@
     "managementHintKiroCloud": "Ein Chat läuft auf einem Profil, sobald du es im Menü „Diesen Chat ausführen auf“ neben dem Nachrichtenfeld wählst. Jeder Chat erhält eine eigene Kiro-Cloud-Sandbox, die in Kiro Web (app.kiro.dev) aufgeführt ist und nicht hier. Archivierst oder löschst du den Chat, bleibt seine Sandbox dort erhalten.",
     "computeSurvivesStopMicroVm": "Unsicher? Lass es an, außer die Dateien dieser Vorlage gehen verloren, wenn ein Workspace anhält.",
     "kiroCloud": {
-      "replayed": "Die Cloud-Sitzung konnte nicht erneut geöffnet werden, daher wurde eine neue Cloud-Sitzung gestartet, in die dieses Gespräch übernommen wurde. Dateien und Änderungen aus der früheren Sitzung sind darin nicht enthalten. Die frühere Sitzung ist weiterhin in Kiro Web (app.kiro.dev) aufgeführt.",
+      "replayed": "Die Cloud-Sitzung konnte nicht erneut geöffnet werden, daher wurde eine neue Cloud-Sitzung gestartet, in die dieses Gespräch übernommen wurde. Dateien und Änderungen aus der früheren Sitzung sind darin nicht enthalten. Die frühere Sitzung wurde nicht gelöscht und ist weiterhin in Kiro Web (app.kiro.dev) aufgeführt.",
+      "replaced": "Dieser Chat läuft jetzt in einer neuen Kiro-Cloud-Sandbox. Dateien und Änderungen aus der früheren Sandbox sind darin nicht enthalten. Die frühere Sandbox wurde nicht gelöscht und ist weiterhin in Kiro Web (app.kiro.dev) aufgeführt.",
       "title": "Kiro Cloud Sessions",
       "profilesHint": "Profile, die die ganze Sitzung in einer Kiro-Cloud-Sandbox ausführen: den Agenten, seine Dateien und seine Befehle. Das Profil einer Sitzung wählst du über das Umgebungsmenü neben dem Nachrichtenfeld.",
       "notVerified": "Diese Profile werden nicht vorab geprüft. Kann ein Cloud-Chat nicht starten, erklärt der Chat den Grund.",

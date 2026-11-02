@@ -938,8 +938,18 @@ the provider. The next dashboard claim surfaces it as a persisted `error` row
 (something the user had did not reopen, so it renders through the transcript's
 `ErrorCard`, per `errors-use-error-notice`), not prompt context, with
 `meta.kind = cloud_session_replayed`; the card renders that kind's localized
-sentence in every locale. No row is emitted for a successful reload or an
-ordinary local/KAS fallback.
+sentence in every locale. A load that replays no earlier turn is a failed load
+here too (`require_replay`), so it takes the same fallback and notice.
+
+A start that reaches `session/new` with no reopen attempted, because Edit &
+Resend, a reset or compaction dropped the session's resume id, still replaces
+the cloud session the chat's choice row recorded. `record_cloud_session` returns
+that earlier id, read under the same lock as the write; when it differs from the
+new one the start stores the same kind of notice with
+`meta.kind = cloud_session_replaced`, saying the chat now runs on a new sandbox
+and that the earlier one was not deleted and is still listed in Kiro Web. No row
+is emitted for a successful reload, a first start, or an ordinary local/KAS
+fallback.
 
 ## Essential-context delivery contract
 

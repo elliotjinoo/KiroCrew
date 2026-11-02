@@ -21272,7 +21272,8 @@
     "managementHintKiroCloud": "Una chat gira su un profilo non appena lo scegli nel menu “Esegui questa chat su” accanto alla casella del messaggio. Ogni chat riceve la propria sandbox cloud di Kiro, elencata in Kiro Web (app.kiro.dev) e non qui. Archiviare o eliminare la chat lascia lì la sua sandbox.",
     "computeSurvivesStopMicroVm": "Non sei sicuro? Lascialo attivo, a meno che i file di questo modello vadano persi quando un workspace si arresta.",
     "kiroCloud": {
-      "replayed": "Impossibile riaprire la sessione cloud, quindi è stata avviata una nuova sessione cloud che prosegue questa conversazione. I file e le modifiche della sessione precedente non sono presenti. La sessione precedente è ancora elencata in Kiro Web (app.kiro.dev).",
+      "replayed": "Impossibile riaprire la sessione cloud, quindi è stata avviata una nuova sessione cloud che prosegue questa conversazione. I file e le modifiche della sessione precedente non sono presenti. La sessione precedente non è stata eliminata ed è ancora elencata in Kiro Web (app.kiro.dev).",
+      "replaced": "Questa chat ora viene eseguita in una nuova sandbox cloud di Kiro. I file e le modifiche della sandbox precedente non sono presenti. La sandbox precedente non è stata eliminata ed è ancora elencata in Kiro Web (app.kiro.dev).",
       "title": "Kiro Cloud Sessions",
       "profilesHint": "Profili che eseguono l’intera sessione in una sandbox cloud di Kiro: l’agente, i suoi file e i suoi comandi. Scegline uno per una sessione dal menu dell’ambiente accanto alla casella del messaggio.",
       "notVerified": "Questi profili non vengono controllati in anticipo. Se una chat cloud non può avviarsi, la chat ne spiega il motivo.",

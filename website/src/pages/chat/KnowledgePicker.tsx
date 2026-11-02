@@ -130,7 +130,7 @@ export function KnowledgePicker({ results, query, loading, error, onRetry, onInj
       </div>
 
       <div className="flex items-center justify-between">
-        <span className="text-[11px] text-muted">{selected.size} {i18nT('pages.chat.knowledgePicker.selected')} {totalTokens} {i18nT('pages.chat.knowledgePicker.tokens')}</span>
+        <span className="text-[11px] text-muted">{i18nT('pages.chat.knowledgePicker.selected_count', { count: selected.size })} · {i18nT('pages.chat.knowledgePicker.tokens_count', { count: totalTokens })}</span>
         <div className="flex gap-2">
           <button
             onClick={onSkip}

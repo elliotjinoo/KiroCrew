@@ -12,6 +12,7 @@ import MarkdownRenderer, { Lightbox, dispatchLightbox, isPathCandidate, splitLin
 import { __resetPathKindCache } from '../hooks/usePathKind'
 import { kindsRequestCount, kindsRequestPaths, kindsResponse, probedPaths, stubPathKinds } from './pathKindStub'
 import { api } from '../api/client'
+import { i18nT } from '../i18n/t'
 
 // The chip's reveal hint is gated on the shared reveal gate (branding.directLocal
 // AND branding.desktopLauncher): where no reveal can land, shift+click copies the
@@ -186,6 +187,34 @@ describe('MarkdownRenderer XSS sanitization', () => {
       // ladder and regains the click-to-copy affordance an in-link span is
       // denied (contrast MarkdownRenderer.inlineCodeInLink.test.tsx).
       expect(code).toHaveAttribute('role', 'button')
+    })
+
+    // A refused destination carries a visible, accessible cue: the muted
+    // dotted underline, a generic hover title, and the same reason appended
+    // to the label's accessible text. The reason never names the destination.
+    it('marks a refused destination with a muted cue and an accessible reason', () => {
+      const { container } = render(<MarkdownRenderer content={'open [my note](obsidian://vault/note)'} />)
+      const cue = container.querySelector('[data-refused-link]')
+      expect(cue).not.toBeNull()
+      expect(cue!.className).toContain('decoration-dotted')
+      expect(cue!.className).toContain('text-muted')
+      const reason = i18nT('components.markdownRenderer.refused_link_destination')
+      expect(cue).toHaveAttribute('title', reason)
+      expect(cue!.querySelector('.sr-only')?.textContent).toBe(` (${reason})`)
+      expect(cue!.textContent).toContain('my note')
+      expect(container.innerHTML).not.toContain('obsidian:')
+    })
+
+    // Every input reaching the inert-label branch wears the cue: the ''
+    // sentinel (empty destination), a destination the sanitizer deleted
+    // (javascript:, data:), and a raw-HTML anchor that never had an href,
+    // which arrives in the same absent shape.
+    it('marks javascript:, data:, empty and href-less anchors with the same cue', () => {
+      for (const md of ['[click me](javascript:alert(1))', '[d](data:text/html,x)', '[label]()', '<a>bare</a>']) {
+        const { container, unmount } = render(<MarkdownRenderer content={md} />)
+        expect(container.querySelector('[data-refused-link]')).not.toBeNull()
+        unmount()
+      }
     })
 
     // Control: the guard must be scoped to the rejection sentinel — a plain

@@ -308,7 +308,28 @@ function MdAnchor({ node, href, children, [SESSION_REF_TRAILING]: trailing }: Md
   // session link is the sentence's own; whatever this anchor renders as, it
   // goes back right after it, so no branch can swallow a full stop.
   const keep = (el: React.ReactElement) => (trailing ? <>{el}{trailing}</> : el)
-  if (!href) return keep(<span {...sp(node)}>{children}</span>)
+  // The inert label carries the refused-link cue: a muted dotted underline and
+  // a generic reason, as the hover title and as a visually-hidden suffix for
+  // touch, keyboard and screen-reader users. Both forms of a refusal reach
+  // here: urlTransform's '' sentinel (a custom scheme, an empty destination)
+  // and an href the sanitizer deleted outright (`javascript:`, `data:`), which
+  // arrives absent exactly like a raw `<a>` that never had one, so the absent
+  // case wears the cue too. The reason never names the destination: it is
+  // already gone by the time this component runs.
+  if (!href) {
+    const reason = i18nT('components.markdownRenderer.refused_link_destination')
+    return keep(
+      <span
+        {...sp(node)}
+        data-refused-link=""
+        title={reason}
+        className="text-muted underline decoration-dotted decoration-muted underline-offset-2"
+      >
+        {children}
+        <span className="sr-only">{` (${reason})`}</span>
+      </span>,
+    )
+  }
   if (claimed) return keep(<>{claimed}</>)
   if (source?.provider === 'jira') {
     const jira = source

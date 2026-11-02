@@ -69,6 +69,25 @@ export interface FollowUpDerivation {
 const NO_FOLLOW_UPS: readonly string[] = Object.freeze([])
 const NONE: FollowUpDerivation = Object.freeze({ followUpOptions: NO_FOLLOW_UPS, followUpSourceKey: null, followUpMulti: true })
 
+/** The warm brief's report rows (`warm_task_brief_contract.WARM_TASK_BRIEF_MESSAGE_KINDS`).
+ *  The brief only reports, so it answers nothing: the choices above it stay. */
+const WARM_BRIEF_KINDS: ReadonlySet<string> = new Set([
+  'warm_task_brief_preparing', 'warm_task_brief_result', 'warm_task_brief_failure',
+])
+
+/** Ids of work items the gateway read as accepted in the ledger when it posted a brief row. */
+function warmBriefDoneItems(m: ChatMessage): string[] | null {
+  const kind = m.meta?.kind
+  if (typeof kind !== 'string' || !WARM_BRIEF_KINDS.has(kind)) return null
+  const done = m.meta?.done_items
+  return Array.isArray(done) ? done.filter((d): d is string => typeof d === 'string' && /^it_[0-9a-f]{8}$/.test(d)) : []
+}
+
+/** Whether *label* names a done item by its exact id. A checked ledger fact
+ *  only; a label that merely sounds finished is kept. */
+const namesDoneItem = (label: string, done: string[]): boolean =>
+  done.some(id => new RegExp(`\\b${id}\\b`, 'i').test(label))
+
 /**
  * Identity of the transcript row *m* sits at index *i* of, stable across
  * pagination AND across a hydration that enriches the row.
@@ -167,9 +186,18 @@ export function deriveFollowUpOptions(
   let sawError = false
   // A row newer than the offering row that shows the running turn moved on.
   let movedOn = false
+  // Items a newer warm brief row read as done in the ledger; their options drop.
+  const done: string[] = []
+  const offer = (options: string[], key: string, multi: boolean): FollowUpDerivation => {
+    const kept = done.length ? options.filter(o => !namesDoneItem(o, done)) : options
+    return kept.length ? { followUpOptions: kept, followUpSourceKey: key, followUpMulti: multi } : NONE
+  }
   for (let i = messages.length - 1; i >= 0; i--) {
     const m = messages[i]
     if (movedOnRow?.(m)) { movedOn = true; continue }
+    // A warm brief only reports: it answers no question, so it is crossed like a notice.
+    const briefDone = warmBriefDoneItems(m)
+    if (briefDone) { done.push(...briefDone); continue }
     // A deliberate Stop ENDS the turn rather than interrupting it, so the choice is closed
     // by the user's own cancellation — the error licence below must not reach back past it.
     if (isStopEvent(m)) return NONE
@@ -199,7 +227,7 @@ export function deriveFollowUpOptions(
         if (movedOn) return NONE
         // A note row still gets an identity: the bar keys its render off it, and a note whose
         // options never re-key would let a later identical note reuse the earlier row's key.
-        return { followUpOptions: parsed.options, followUpSourceKey: rowIdentity(m, i), followUpMulti: parsed.multi }
+        return offer(parsed.options, rowIdentity(m, i), parsed.multi)
       }
       continue
     }
@@ -210,7 +238,7 @@ export function deriveFollowUpOptions(
       // Crossing does NOT consume the error licence: the `user` row below still needs it.
       if (!options.length && sawError) continue
       if (!options.length || movedOn) return NONE
-      return { followUpOptions: options, followUpSourceKey: rowIdentity(m, i), followUpMulti: multi }
+      return offer(options, rowIdentity(m, i), multi)
     }
   }
   return NONE

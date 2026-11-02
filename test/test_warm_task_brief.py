@@ -1741,3 +1741,28 @@ async def test_work_item_closing_during_the_model_call_still_publishes(monkeypat
 
     assert items[0].state == "accepted"
     assert _brief_kinds(slot) == _FULL_BRIEF
+
+
+def test_brief_row_carries_only_ledger_accepted_items_for_the_chip_bar(monkeypatch):
+    from kiro_crew.dashboard import state as state_mod
+
+    posted: list[dict] = []
+    monkeypatch.setattr(
+        state_mod,
+        "append_and_surface",
+        lambda _state, _slot, _role, _content, _cls, meta: posted.append(meta) or meta,
+    )
+    items = (
+        {"item_id": "it_0000000a", "title": "Ship it", "state": "accepted"},
+        {"item_id": "it_0000000b", "title": "Open one", "state": "open"},
+        {"item_id": "it_0000000c", "title": "Dropped", "state": "abandoned"},
+    )
+    warm_task_brief._post_message(
+        None, None, "x", kind="warm_task_brief_result", fingerprint="f", items=items
+    )
+    warm_task_brief._post_message(None, None, "x", kind="warm_task_brief_result", fingerprint="f")
+
+    assert posted[0]["done_items"] == ["it_0000000a"]
+    # The brief's own "done" display cap is a separate limit and stays the card's.
+    assert warm_task_brief._MAX_DONE_ITEMS == 4
+    assert "done_items" not in posted[1]

@@ -665,3 +665,53 @@ describe('deriveFollowUpOptions across a say-nothing reply', () => {
     expect(deriveFollowUpOptions(rows, false).followUpOptions).toEqual([])
   })
 })
+
+describe('deriveFollowUpOptions across a warm brief', () => {
+  const brief = (kind = 'warm_task_brief_result', done?: unknown): ChatMessage =>
+    ({ role: 'assistant', content: 'Welcome back. Nothing waits on you.', cls: 'msg msg-a',
+      meta: done === undefined ? { kind } : { kind, done_items: done } })
+  const DONE = ['it_0000000a']
+
+  it.each(['warm_task_brief_result', 'warm_task_brief_failure', 'warm_task_brief_preparing'])(
+    'keeps the options the owner left under a %s row', kind => {
+      const before = deriveFollowUpOptions([assistant(OPTIONS_MSG)], false)
+      const after = deriveFollowUpOptions([assistant(OPTIONS_MSG), brief(kind)], false)
+      expect(after.followUpOptions).toEqual(['Alpha', 'Beta', 'Gamma'])
+      expect(after.followUpSourceKey).toBe(before.followUpSourceKey)
+    })
+
+  it('keeps options from a note row under the brief', () => {
+    expect(deriveFollowUpOptions([note(OPTIONS_MSG), brief()], false).followUpOptions)
+      .toEqual(['Alpha', 'Beta', 'Gamma'])
+  })
+
+  it('drops only an option that names a ledger-done item by its exact id', () => {
+    const rows = [assistant('Next? [OPTIONS: Merge it_0000000a | Ship the fix | Gamma]'), brief(undefined, DONE)]
+    expect(deriveFollowUpOptions(rows, false).followUpOptions).toEqual(['Ship the fix', 'Gamma'])
+  })
+
+  it('keeps an option that only sounds done or names another item', () => {
+    const rows = [assistant('Next? [OPTIONS: Already done | Merge it_0000000b | Merge it_0000000ab]'), brief(undefined, DONE)]
+    expect(deriveFollowUpOptions(rows, false).followUpOptions).toEqual(['Already done', 'Merge it_0000000b', 'Merge it_0000000ab'])
+  })
+
+  it('shows no chips when every option is done', () => {
+    const rows = [assistant('Next? [OPTIONS: Merge it_0000000a]'), brief(undefined, DONE)]
+    expect(deriveFollowUpOptions(rows, false)).toEqual({ followUpOptions: [], followUpSourceKey: null, followUpMulti: true })
+  })
+
+  it('ignores a malformed done list', () => {
+    const rows = [assistant(OPTIONS_MSG), brief(undefined, ['', 'Alpha', '.*', null, { item_id: 'it_0000000a' }])]
+    expect(deriveFollowUpOptions(rows, false).followUpOptions).toEqual(['Alpha', 'Beta', 'Gamma'])
+  })
+
+  it('does not apply done items of an older brief to newer options', () => {
+    const rows = [brief(undefined, DONE), assistant('Next? [OPTIONS: Merge it_0000000a | Gamma]')]
+    expect(deriveFollowUpOptions(rows, false).followUpOptions).toEqual(['Merge it_0000000a', 'Gamma'])
+  })
+
+  it('still offers nothing when there were no options, or the owner already answered', () => {
+    expect(deriveFollowUpOptions([assistant('Done.'), brief()], false).followUpOptions).toEqual([])
+    expect(deriveFollowUpOptions([assistant(OPTIONS_MSG), user('Beta'), brief()], false).followUpOptions).toEqual([])
+  })
+})

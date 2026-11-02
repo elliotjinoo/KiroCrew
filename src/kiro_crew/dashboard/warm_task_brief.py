@@ -1300,6 +1300,10 @@ def _brief_text(brief: Brief, language: str) -> str:
     return "\n".join(lines)
 
 
+# Done item ids one brief row carries for the chip bar's option check.
+_MAX_DONE_ITEM_IDS = 50
+
+
 def _post_message(
     state: "DashboardState",
     slot: "_ChatSlot",
@@ -1308,11 +1312,18 @@ def _post_message(
     kind: str,
     fingerprint: str,
     brief: Brief | None = None,
+    items: tuple[dict[str, Any], ...] = (),
 ) -> dict[str, Any]:
     """Post one ordinary crewmate message; the normal flush loop persists it."""
     from kiro_crew.dashboard.state import append_and_surface
 
     meta: dict[str, Any] = {"kind": kind, "fingerprint": fingerprint}
+    # Ledger-checked ids the chip bar uses to drop an option naming a done
+    # item; every other pending option stays under the brief. Ids only: a
+    # title is free text and may repeat across items.
+    done = [item["item_id"] for item in items if item.get("state") == "accepted"]
+    if done:
+        meta["done_items"] = done[-_MAX_DONE_ITEM_IDS:]
     if brief is not None:
         meta["brief"] = brief.as_meta()
     return append_and_surface(state, slot, "assistant", content, "msg msg-a", meta=meta)
@@ -1434,7 +1445,14 @@ async def _run_warm_task_brief(
         # Nothing to catch up on: one fixed line, no model call. It carries no
         # card, so it claims no task status (a blocked task stays blocked).
         quiet = _QUIET_TEXT[language].format(at=inputs.clock(anchor))
-        _post_message(state, slot, quiet, kind=_RESULT_KIND, fingerprint=snapshot.fingerprint)
+        _post_message(
+            state,
+            slot,
+            quiet,
+            kind=_RESULT_KIND,
+            fingerprint=snapshot.fingerprint,
+            items=fresh.work_items,
+        )
         return
     # From here the thread shows the "preparing your catch-up" indicator
     # without marking a turn: the deferral below still reads ``slot.running``.
@@ -1470,6 +1488,7 @@ async def _run_warm_task_brief(
             _FAILURE_TEXT[language],
             kind=_FAILURE_KIND,
             fingerprint=snapshot.fingerprint,
+            items=fresh.work_items,
         )
         return
     _post_message(
@@ -1479,4 +1498,5 @@ async def _run_warm_task_brief(
         kind=_RESULT_KIND,
         fingerprint=snapshot.fingerprint,
         brief=brief,
+        items=fresh.work_items,
     )

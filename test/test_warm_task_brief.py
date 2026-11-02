@@ -525,8 +525,8 @@ async def test_one_model_call_and_one_message_that_is_a_structured_brief(
         kinds_at_call.extend(row["meta"]["kind"] for row in slot.rows)
         call_kwargs.update(kwargs)
         call_kwargs["prompt"] = args[1]
-        # The model's own progress numbers are ignored: the card shows the
-        # gateway's count from the snapshot's work items.
+        # A progress count the model returns is ignored: the brief draws no
+        # count at all.
         return json.dumps(
             {
                 "status": "needs_you",
@@ -580,7 +580,6 @@ async def test_one_model_call_and_one_message_that_is_a_structured_brief(
             "status": "needs_you",
             "headline": "I reproduced the failure.",
             "asked": "Fix the failing test",
-            "progress": {"accepted": 0, "total": 1},
             "remaining": "Push the fix and rerun CI",
             "done": ["Reproduced the failure"],
             "needs_you": ["Approve the push so CI can run"],
@@ -593,7 +592,6 @@ async def test_one_model_call_and_one_message_that_is_a_structured_brief(
     assert result["content"] == (
         "Waiting on you: I reproduced the failure.\n"
         "Needs you:\n- Approve the push so CI can run\n"
-        "Progress: 0 of 1 done\n"
         "Left: Push the fix and rerun CI\n"
         "You asked: Fix the failing test\n"
         "Done so far:\n- Reproduced the failure\n"
@@ -605,7 +603,8 @@ async def test_one_model_call_and_one_message_that_is_a_structured_brief(
     # The model sees the gateway's goal-scoped count so its text agrees with it.
     assert '"goal_progress": {"accepted": 0, "total": 1}' in prompt
     assert "checked since HH:MM" in prompt and "add, drop or rename one" in prompt
-    assert '"needs_you"' in prompt and "No markdown, HTML, links or\n[OPTIONS] lines" in prompt
+    assert '"needs_you"' in prompt and '"body" is markdown' in prompt
+    assert "No links,\nimages or [OPTIONS] lines" in prompt
     # The user's reply-style choice reaches the prompt.
     assert warm_task_brief._STYLE_HINTS["answer_only"] in prompt
 
@@ -655,6 +654,40 @@ async def test_model_failure_posts_an_ordinary_failure_message(monkeypatch):
     assert [row["content"] for row in _posted(slot)] == [
         "Sorry, I couldn't pull that together just now. Ask me where things stand.",
     ]
+
+
+@pytest.mark.asyncio
+async def test_a_pr_the_input_never_named_in_a_picture_drops_the_model_fields(monkeypatch):
+    state = _State()
+    slot = _Slot()
+    state.slots[slot.key] = slot
+    state._foreground_slots[1] = slot.key
+    snapshot = _snapshot()
+
+    async def read_snapshot(*args, **kwargs):
+        return _claimed(snapshot) if slot.flushed else snapshot
+
+    async def run_model(*args, **kwargs):
+        return json.dumps(
+            {
+                "status": "on_track",
+                "headline": "The fix is in.",
+                "body": "```mermaid\nflowchart LR\nA[#31337 merged] --> B[done]\n```",
+            }
+        )
+
+    monkeypatch.setattr(warm_task_brief, "_snapshot", read_snapshot)
+    monkeypatch.setattr(warm_task_brief, "run_bg_oneliner", run_model)
+    monkeypatch.setattr(
+        warm_task_brief.KiroCrewConfig,
+        "load",
+        lambda: SimpleNamespace(agent=SimpleNamespace(resolve_model=lambda role: "background")),
+    )
+    await warm_task_brief._prepare_warm_task_brief(state, slot)
+    (row,) = _posted(slot)
+    brief = row["meta"]["brief"]
+    assert brief["headline"] == warm_task_brief._FAILURE_TEXT["en"]
+    assert "body" not in brief and "#31337" not in row["content"]
 
 
 @pytest.mark.asyncio
@@ -1045,7 +1078,6 @@ def test_every_text_label_language_has_every_label():
         assert set(labels) == set(warm_task_brief._TEXT_LABEL_KEYS)
         assert set(warm_task_brief._STATUSES) <= set(labels)
         assert all(labels.values())
-        assert labels["count"].format(accepted=1, total=2) != labels["count"]
 
 
 @pytest.mark.parametrize("kind", [[], {}, ["warm_task_brief_result"], None, 3])
@@ -1504,7 +1536,7 @@ def test_structured_brief_survives_a_transcript_round_trip(tmp_path):
     from kiro_crew.history import ConversationLog
 
     brief = warm_task_brief._parse_result(
-        '{"asked":"Fix it","headline":"Ready.","needs_you":[],"next":["Review"]}', "", (1, 1)
+        '{"asked":"Fix it","headline":"Ready.","needs_you":[],"next":["Review"]}', ""
     )
     assert brief is not None
     log = ConversationLog(base_dir=tmp_path / "sessions")
@@ -1521,9 +1553,7 @@ def test_structured_brief_survives_a_transcript_round_trip(tmp_path):
     )
     (row,) = log.derive_messages_chained("dashboard:thread-x")
     assert row["meta"]["brief"] == brief.as_meta()
-    assert row["content"] == (
-        "On track: Ready.\nProgress: 1 of 1 done\nYou asked: Fix it\nNext:\n1. Review"
-    )
+    assert row["content"] == "On track: Ready.\nYou asked: Fix it\nNext:\n1. Review"
 
 
 class _CrewmateState(_State):

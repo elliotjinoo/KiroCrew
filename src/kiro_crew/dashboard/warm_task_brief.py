@@ -64,7 +64,9 @@ WARM_TASK_BRIEF_TIMEOUT_SECS = 60.0
 # Model calls one return may spend: the first, and one redo when the state
 # changed while it ran.
 WARM_TASK_BRIEF_ATTEMPTS = 2
-WARM_TASK_BRIEF_MAX_OUTPUT_BYTES = 16 * 1024
+# Room for every field at its cap in a three-byte script, plus JSON escaping
+# of a widget's quotes, so a full brief is never cut into a failure line.
+WARM_TASK_BRIEF_MAX_OUTPUT_BYTES = 40 * 1024
 # A return while a turn runs waits for the turn to end, at most this long, and
 # only while the owner keeps the thread on screen.
 WARM_TASK_BRIEF_DEFER_MAX_SECS = 30 * 60
@@ -86,9 +88,10 @@ _MAX_DONE_ITEMS = 4
 _MAX_EXTRA_SECTIONS = 2
 _MAX_EXTRA_TITLE_CHARS = 60
 # The free-form catch-up text: kept line by line, capped as a whole. Room for
-# four asks of four lines each (what, why, options, recommendation).
-_MAX_BODY_CHARS = 2400
-_MAX_BODY_LINES = 32
+# four asks of four lines each, plus one picture the model chose (a mermaid
+# diagram, a table or an <mcwidget>).
+_MAX_BODY_CHARS = 6000
+_MAX_BODY_LINES = 160
 # Work items waiting on the owner, read by the gateway from the ledger. The card
 # folds all but the first few; past this bound only the count rides along.
 _MAX_WAITING = 50
@@ -128,8 +131,6 @@ _TEXT_LABEL_KEYS = (
     "blocked",
     "done",
     "needs",
-    "progress",
-    "count",
     "remaining",
     "asked",
     "finished",
@@ -138,33 +139,15 @@ _TEXT_LABEL_KEYS = (
 # One "|"-separated row per language, in _TEXT_LABEL_KEYS order: the four
 # status words, then the section labels.
 _TEXT_LABEL_ROWS = {
-    "en": (
-        "On track|Waiting on you|Blocked|Done|"
-        "Needs you|Progress|{accepted} of {total} done|Left|You asked|Done so far|Next"
-    ),
-    "zh": (
-        "进展顺利|等你处理|卡住了|已完成|"
-        "需要你|进度|{total} 项中已完成 {accepted} 项|还剩|你让我做|已做完|下一步"
-    ),
-    "ja": (
-        "順調|あなた待ち|止まっています|完了|"
-        "あなたの番|進み具合|{total} 件中 {accepted} 件完了|残り|ご依頼|済んだこと|次に"
-    ),
-    "ko": (
-        "순조로움|답변 대기|막힘|완료|"
-        "확인 필요|진행|{total}개 중 {accepted}개 완료|남은 일|요청하신 일|한 일|다음"
-    ),
-    "ru": (
-        "По плану|Ждёт вас|Застряло|Готово|"
-        "Нужно от вас|Прогресс|Готово {accepted} из {total}|Осталось|Вы просили|Сделано|Дальше"
-    ),
-    "hi": (
-        "ठीक चल रहा है|आपका इंतज़ार|अटका है|पूरा हुआ|"
-        "आपसे चाहिए|प्रगति|{total} में से {accepted} पूरे|बाकी|आपने कहा था|हो चुका|आगे"
-    ),
+    "en": "On track|Waiting on you|Blocked|Done|Needs you|Left|You asked|Done so far|Next",
+    "zh": "进展顺利|等你处理|卡住了|已完成|需要你|还剩|你让我做|已做完|下一步",
+    "ja": "順調|あなた待ち|止まっています|完了|あなたの番|残り|ご依頼|済んだこと|次に",
+    "ko": "순조로움|답변 대기|막힘|완료|확인 필요|남은 일|요청하신 일|한 일|다음",
+    "ru": "По плану|Ждёт вас|Застряло|Готово|Нужно от вас|Осталось|Вы просили|Сделано|Дальше",
+    "hi": "ठीक चल रहा है|आपका इंतज़ार|अटका है|पूरा हुआ|आपसे चाहिए|बाकी|आपने कहा था|हो चुका|आगे",
     "bn": (
         "ঠিকঠাক চলছে|আপনার অপেক্ষায়|আটকে আছে|শেষ|"
-        "আপনার কাছে দরকার|অগ্রগতি|{total}টির মধ্যে {accepted}টি শেষ|বাকি|আপনি বলেছিলেন|যা হয়েছে|এরপর"
+        "আপনার কাছে দরকার|বাকি|আপনি বলেছিলেন|যা হয়েছে|এরপর"
     ),
 }
 _TEXT_LABELS = {
@@ -236,14 +219,25 @@ Return exactly one JSON object:
  "body": "<parts 2 to 5>"}}
 
 "needs_you" holds at most {max_items} items of at most {item_cap} characters;
-it is [] when nothing waits on the owner. "body" is plain text of at most
-{body_cap} characters in short "- " lines. No markdown, HTML, links or
-[OPTIONS] lines. Return words only: no HTML, widget or picture of any kind.
+it is [] when nothing waits on the owner. "body" is markdown of at most
+{body_cap} characters and {body_lines} lines, mostly short "- " lines; a
+picture that would pass either cap is dropped whole. When a picture helps the
+owner act faster, you may add one, in the form that fits best: a ```mermaid
+diagram, a markdown table, or an <mcwidget> (a live widget: HTML, CSS and
+script in one block, coloured only with the theme's CSS variables, never a
+hex colour). The widget has no network: nothing loads from a CDN or any
+site, and its buttons cannot send anything to the chat, so put every fact it
+shows in its own source. There is no fixed template, and most catch-ups need
+none.
+Every #N, commit SHA and HH:MM anywhere in your fields, a picture's source
+included, must appear in the snapshot or be the "as of" time; one that does
+not makes the gateway drop everything you wrote. Never add a bare "N of M done" line. No links,
+images or [OPTIONS] lines.
 
-The gateway draws two things itself, from the snapshot: the "progress" count,
-and every open work item whose status is "blocked" or "question" with reason
-"approval" or "needs_human" (those wait on the owner). Never repeat or draw
-them: put in "needs_you" only owner actions that are not such a work item.
+The gateway draws every open work item whose status is "blocked" or "question"
+with reason "approval" or "needs_human" (those wait on the owner). Never
+repeat them: put in "needs_you" only owner actions that are not such a work
+item.
 
 Write in the language of "owner_recent_messages".
 {style}
@@ -1036,24 +1030,25 @@ def _build_prompt(
         item_cap=_MAX_ITEM_CHARS,
         max_items=_MAX_ITEMS,
         body_cap=_MAX_BODY_CHARS,
+        body_lines=_MAX_BODY_LINES,
     )
 
 
 @dataclass(frozen=True)
 class Brief:
-    """One validated, redacted, capped brief. Every text field is plain text; ``progress`` and ``waiting`` are the gateway's own reads of
-    the ledger, never the model's."""
+    """One validated, redacted, capped brief. Every field but ``body`` is plain
+    text; ``body`` is markdown. ``waiting`` is the gateway's own read of the
+    ledger, never the model's."""
 
     status: str
     headline: str
     asked: str
-    progress: tuple[int, int] | None
     remaining: str
     done: tuple[str, ...]
     needs_you: tuple[str, ...]
     next: tuple[str, ...]
     extra: tuple[tuple[str, tuple[str, ...]], ...]
-    # Free-form plain text, kept line by line.
+    # Free-form markdown, kept line by line; may hold a picture the model chose.
     body: str = ""
     # Work items waiting on the owner as ``(title, ask)``, at most _MAX_WAITING.
     waiting: tuple[tuple[str, str], ...] = ()
@@ -1071,8 +1066,6 @@ class Brief:
             "next": list(self.next),
             "extra": [{"title": title, "items": list(items)} for title, items in self.extra],
         }
-        if self.progress is not None:
-            meta["progress"] = {"accepted": self.progress[0], "total": self.progress[1]}
         if self.body:
             meta["body"] = self.body
         if self.waiting_total:
@@ -1154,22 +1147,70 @@ def _redact_whole(text: str) -> str:
     return _redact(_redact(text).replace("**", ""))
 
 
+def _hides_a_credential(text: str) -> bool:
+    """Whether dropping ``**`` or collapsing whitespace in *text* forms a
+    credential the redactor would remove: a split meant to slip one past it."""
+    # The rendered card joins what markdown emphasis, code spans and HTML tags
+    # split in the source, so the probe joins them too.
+    # Each probe on its own, so one normalization cannot hide what another
+    # reveals.
+    for probe in (text.replace("**", ""), _SPLITTER_RE.sub("", text)):
+        probe = " ".join(probe.split())
+        if _redact(probe) != probe:
+            return True
+    return False
+
+
+# Source that renders as nothing between two halves of a token: an HTML tag,
+# and the markdown emphasis and code-span markers. Not `_`: inside a word it
+# never renders as emphasis, and credential prefixes (`ghp_`) contain it.
+_SPLITTER_RE = re.compile(r"<[^<>]*>|[*`~]")
+# An opener whose block a cap must never cut: a widget or a code fence.
+_WIDGET_OPEN_RE = re.compile(r"<mcwidget\b", re.IGNORECASE)
+_WIDGET_CLOSE_RE = re.compile(r"</mcwidget\s*>", re.IGNORECASE)
+_FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})", re.MULTILINE)
+
+
+def _drop_cut_block(text: str) -> str:
+    """*text* with a widget or code fence the cap left open removed from its
+    opener on: a cut widget draws broken HTML and a cut fence swallows what
+    follows, so a block is kept whole or not at all."""
+    opens = list(_WIDGET_OPEN_RE.finditer(text))
+    if opens and len(_WIDGET_CLOSE_RE.findall(text[opens[-1].start() :])) == 0:
+        text = text[: opens[-1].start()]
+    fences = list(_FENCE_RE.finditer(text))
+    if len(fences) % 2:
+        text = text[: fences[-1].start()]
+    return text.rstrip()
+
+
 def _clean_body(value: object) -> str:
-    """Free-form text: each line cleaned like a field, blank runs kept as one,
-    capped as a whole. The whole value is redacted before it is split, so a
-    credential that spans lines is matched whole."""
+    """Free-form markdown, kept as source so a mermaid block, a table and a
+    widget's script reach the renderer intact (``2 ** 3`` stays exponentiation,
+    indentation stays). The whole value is redacted before it is split, so a
+    credential that spans lines is matched whole. Only when dropping ``**`` or
+    collapsing whitespace would reveal a credential is each line cleaned like a
+    field instead. Blank runs are kept as one, and the body is capped whole."""
     if not isinstance(value, str):
         return ""
+    redacted = _redact(value)
     lines: list[str] = []
-    for raw in _redact_whole(value).splitlines():
-        line = _clean(raw, _MAX_BODY_CHARS)
-        if line or (lines and lines[-1]):
-            lines.append(line)
+    if _hides_a_credential(redacted):
+        # Drop the splitters first, so the joined token is what gets redacted.
+        joined = _redact_whole(_SPLITTER_RE.sub("", redacted))
+        source = [_clean(raw, _MAX_BODY_CHARS) for raw in joined.splitlines()]
+    else:
+        source = [raw.rstrip() for raw in redacted.splitlines()]
+    for line in source:
+        if line.strip() or (lines and lines[-1]):
+            lines.append(line if line.strip() else "")
     # Again on the joined text: a marker's opener may sit at a line's end.
-    text = _defang_markers("\n".join(lines[:_MAX_BODY_LINES]).strip())
-    if len(text) <= _MAX_BODY_CHARS:
-        return text
-    return text[: _MAX_BODY_CHARS - 1].rstrip() + "…"
+    whole = _defang_markers("\n".join(lines).strip())
+    text = "\n".join(whole.split("\n")[:_MAX_BODY_LINES])
+    if len(text) > _MAX_BODY_CHARS:
+        text = text[: _MAX_BODY_CHARS - 1].rstrip() + "…"
+    # A cap that cut inside a widget or fence drops that block whole.
+    return _drop_cut_block(text) if text != whole else text
 
 
 def _answered(item: dict[str, Any]) -> bool:
@@ -1215,7 +1256,6 @@ _HEADLINE_KEYS = ("headline", "now", "message")
 def _parse_result(
     text: str,
     fallback_asked: str = "",
-    progress: tuple[int, int] | None = None,
     work_items: tuple[dict[str, Any], ...] = (),
 ) -> Brief | None:
     """Validate the model's JSON into a :class:`Brief`, or ``None``.
@@ -1223,9 +1263,9 @@ def _parse_result(
     ``headline`` is the one required field; the older ``now`` and prose
     ``message`` shapes are read as it, so a model that ignores the new shape
     still yields a short card instead of a failure line. A missing ``asked``
-    falls back to the original request the gateway quoted. *progress* is the
-    gateway's count and *work_items* the ledger the waiting list is read from;
-    any number, list or HTML picture the model returns for them is ignored.
+    falls back to the original request the gateway quoted. *work_items* is the
+    ledger the waiting list is read from; any list the model returns for it,
+    and any ``progress`` count, is ignored.
     """
     raw = _extract_json_of_type(
         text,
@@ -1253,7 +1293,6 @@ def _parse_result(
         # A free-form body carries the reminder itself.
         asked=_clean(raw.get("asked"), _MAX_ASKED_CHARS)
         or ("" if body else _clean(fallback_asked, _MAX_ASKED_CHARS)),
-        progress=progress,
         remaining=_clean(raw.get("remaining"), _MAX_REMAINING_CHARS),
         done=_clean_items(raw.get("done"), _MAX_DONE_ITEMS),
         needs_you=needs_you,
@@ -1262,6 +1301,73 @@ def _parse_result(
         body=body,
         waiting=waiting,
         waiting_total=waiting_total,
+    )
+
+
+# The section 3.9.6 output check: what the model may only repeat, never make up.
+# A `#N` reference. Not an HTML entity (`&#123;`) and not a hex colour
+# (`#007bff`); a leading zero is never a pull request.
+_REF_RE = re.compile(r"(?<![&\w])#([1-9]\d*)(?![0-9A-Za-z_])")
+# Where a pull request or issue number appears in the input.
+_INPUT_REF_RE = re.compile(
+    r"#([1-9]\d*)|/(?:pull|issues)/([1-9]\d*)|\"(?:pr|pr_number|number|issue)\":\s*([1-9]\d*)"
+)
+# A commit SHA: 7 to 40 hex digits, not a `#` colour, with a digit and a letter.
+_SHA_RE = re.compile(r"(?<![#\w])([0-9a-f]{7,40})(?!\w)", re.IGNORECASE)
+_TIME_RE = re.compile(r"(?<!\d)([01]?\d|2[0-3]):([0-5]\d)(?!\d)")
+
+
+def _times_in(text: str) -> set[str]:
+    return {f"{int(h):02d}:{m}" for h, m in _TIME_RE.findall(text)}
+
+
+def _model_text(brief: "Brief") -> str:
+    """Every model-written field, the body whole: its prose, mermaid source,
+    table cells and widget source, so a fact inside a picture is checked too."""
+    parts = [brief.headline, brief.asked, brief.remaining, brief.body]
+    parts += [*brief.done, *brief.needs_you, *brief.next]
+    for title, items in brief.extra:
+        parts += [title, *items]
+    return "\n".join(parts)
+
+
+def _unbacked_facts(brief: "Brief", grounding: str, clocks: set[str]) -> list[str]:
+    """The `#N` references, commit SHAs and HH:MM times in the model's fields
+    that the input never gave it (section 3.9.6). *grounding* is the snapshot
+    the prompt carried; *clocks* the "as of" times the prompt stated."""
+    text = _model_text(brief)
+    refs = {n for groups in _INPUT_REF_RE.findall(grounding) for n in groups if n}
+    lowered = grounding.lower()
+    times = _times_in(grounding) | clocks
+    bad = [f"#{n}" for n in _REF_RE.findall(text) if n not in refs]
+    for sha in _SHA_RE.findall(text):
+        mixed = any(c.isdigit() for c in sha) and any(c.isalpha() for c in sha)
+        if mixed and sha.lower() not in lowered:
+            bad.append(sha)
+    bad += [t for t in sorted(_times_in(text)) if t not in times]
+    return bad
+
+
+def _gateway_only(brief: "Brief", language: str) -> "Brief":
+    """The brief with every model field dropped: the gateway's waiting cards
+    and one line saying the summary could not be written (section 3.9.6)."""
+    return replace(
+        brief,
+        # The model's own asks are gone, so only the gateway's list can owe the
+        # owner something; a "blocked" read is kept rather than shown on track.
+        status=(
+            "needs_you"
+            if brief.waiting_total
+            else ("blocked" if brief.status == "blocked" else "on_track")
+        ),
+        headline=_FAILURE_TEXT[language],
+        asked="",
+        remaining="",
+        done=(),
+        needs_you=(),
+        next=(),
+        extra=(),
+        body="",
     )
 
 
@@ -1284,9 +1390,6 @@ def _brief_text(brief: Brief, language: str) -> str:
     owed = tuple(f"{title}: {ask}" if ask else title for title, ask in brief.waiting)
     unlisted = brief.waiting_total - len(brief.waiting)
     section(labels["needs"], owed + ((f"+{unlisted}",) if unlisted > 0 else ()) + brief.needs_you)
-    if brief.progress is not None:
-        count = labels["count"].format(accepted=brief.progress[0], total=brief.progress[1])
-        lines.append(f"{labels['progress']}: {count}")
     if brief.body:
         lines.append(brief.body)
     if brief.remaining:
@@ -1449,6 +1552,7 @@ async def _run_warm_task_brief(
     # a ledger write during the model call makes the result stale. Regenerate
     # once from the new state; a second change posts nothing this visit.
     for _attempt in range(WARM_TASK_BRIEF_ATTEMPTS):
+        asked_at = time.time()
         text = await _generate(state, slot, fresh, anchor)
         # Once the indicator shows, the result lands as ordinary history even
         # while the owner is away from the thread. A turn that started
@@ -1462,7 +1566,7 @@ async def _run_warm_task_brief(
     else:
         _skip(slot.key, "changed_during_write")
         return
-    brief = _parse_result(text, fresh.original_request, fresh.progress, fresh.work_items)
+    brief = _parse_result(text, fresh.original_request, fresh.work_items)
     if brief is None:
         _post_message(
             state,
@@ -1472,6 +1576,17 @@ async def _run_warm_task_brief(
             fingerprint=snapshot.fingerprint,
         )
         return
+    # Section 3.9.6: a `#N`, SHA or time the input never gave drops every model
+    # field, the picture included; the gateway's waiting cards still post.
+    # The original request rides along: a missing ``asked`` falls back to it.
+    grounding = json.dumps(_payload(fresh, anchor), ensure_ascii=False) + fresh.original_request
+    clocks = {
+        inputs.clock(t)[-5:] for t in range(int(asked_at) // 60 * 60, int(time.time()) + 60, 60)
+    }
+    unbacked = _unbacked_facts(brief, grounding, clocks)
+    if unbacked:
+        logger.info("warm task brief for %s cites facts not in its input: %s", slot.key, unbacked)
+        brief = _gateway_only(brief, language)
     _post_message(
         state,
         slot,

@@ -1094,6 +1094,33 @@ def _registry_mode() -> bool:
         return True
 
 
+def _registry_local_control_plane_permitted() -> bool:
+    """Whether the admin's security policy opts Crew's own servers past the registry.
+
+    The policy's top-level ``mcp_registry_local_control_plane``
+    (``GovernanceCeiling.mcp_registry_local_control_plane``). ``security_policy.json``
+    is a keystone the sandbox mounts read-only and the agent file gate refuses to
+    write, so the opt-in is the admin's alone. Absent, ``false``, no policy at all,
+    or a ceiling that cannot be read all answer ``False``: the default on a
+    registry-governed host stays the one that mounts nothing outside the catalog.
+    A memory read of the installed ceiling.
+    """
+    try:
+        from kiro_crew.platform.context import current_context
+
+        return (
+            getattr(current_context().governance, "mcp_registry_local_control_plane", False) is True
+        )
+    except Exception:
+        logger.warning(
+            "session MCP: could not read the security policy's "
+            "mcp_registry_local_control_plane; treating it as off, so Kiro Crew's own "
+            "servers get no per-session identity element under registry mode.",
+            exc_info=True,
+        )
+        return False
+
+
 class SessionMcpProjection(NamedTuple):
     """Everything a backend derives from the agent spec, from ONE parse of it."""
 
@@ -1891,9 +1918,26 @@ def kiro_control_plane_servers(
     element does -- and it has to come from this read. A second read for it
     would be the window in which a toggle undone in between answers ``None``
     and the session falls back to a guard that names the wrong file.
+
+    Under registry mode (``agent.mcp_registry_mode``) kiro-cli launches the
+    spec's ``"type": "registry"`` entries from the admin catalog, which carries no
+    per-session identity, while an element this function injects is launched as
+    given. So by default nothing is mounted there and every server stays the
+    catalog's; identity-scoped calls from Crew's servers are then refused
+    ``identity_unattestable``. Only when the admin's security policy sets
+    ``mcp_registry_local_control_plane`` (:func:`_registry_local_control_plane_permitted`)
+    is the element mounted, and then for :data:`CONTROL_PLANE_SERVERS` alone:
+    opt-in Crew servers and builtin app servers stay under the catalog.
     """
-    if not agent or _registry_mode():
+    if not agent:
         return NativeControlPlaneMount([], {})
+    registry_mode = _registry_mode()
+    if registry_mode and not _registry_local_control_plane_permitted():
+        return NativeControlPlaneMount([], {})
+    identity_servers: tuple[str, ...] = (
+        CONTROL_PLANE_SERVERS if registry_mode else IDENTITY_BOUND_SERVERS
+    )
+    app_launches = {} if registry_mode else builtin_app_identity_launches()
     spec = spec_override if spec_override is not None else _agent_spec_for(agent, work_dir)
     if not isinstance(spec, dict) or not isinstance(spec.get("mcpServers"), dict):
         return NativeControlPlaneMount([], {})
@@ -1915,7 +1959,7 @@ def kiro_control_plane_servers(
         )
         # The verdict covers the whole population this function mounts, the
         # builtin app servers included, so a withheld one is named as such.
-        unreadable = (*IDENTITY_BOUND_SERVERS, *builtin_app_identity_launches())
+        unreadable = (*identity_servers, *app_launches)
         return NativeControlPlaneMount([], {name: exc for name in unreadable})
     out: list[dict[str, Any]] = []
     withheld_by_name: dict[str, NativeMountWithholding | NativeSettingsUnreadable] = {}
@@ -1925,10 +1969,9 @@ def kiro_control_plane_servers(
     # the env its pinned launch needs (PYTHONPATH and KIROCREW_HOME).
     candidates: list[tuple[str, dict[str, Any] | None, dict[str, str]]] = [
         (name, managed_mcp_spec_entry(name, include_opt_in=True), {})
-        for name in IDENTITY_BOUND_SERVERS
+        for name in identity_servers
         if allow.grants(name)
     ]
-    app_launches = builtin_app_identity_launches()
     candidates.extend(
         (name, launch, dict(launch.get("env") or {}))
         for name, launch in app_launches.items()

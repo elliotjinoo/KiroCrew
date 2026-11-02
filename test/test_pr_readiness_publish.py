@@ -130,6 +130,14 @@ if [ "$1" = "api" ]; then
       [ -f "$FIXTURES/fail_fork_checks" ] && { echo 'gh: Server Error (HTTP 500)' >&2; exit 1; }
       cat "$FIXTURES/fork_checks.json"; exit 0 ;;
     *"/actions/runs/"[0-9]*)
+      # One run by id, read when a head_sha listing came back empty and the
+      # head's check-runs name the run: run_<id>.json is that run object.
+      rid="$*"
+      rid="${rid##*/actions/runs/}"
+      rid="${rid%%[/? ]*}"
+      if [ -f "$FIXTURES/run_$rid.json" ]; then
+        cat "$FIXTURES/run_$rid.json"; exit 0
+      fi
       # The triggering lane's run, read by the hold step. `--jq .status` is
       # applied by gh itself, so the stub emits the final value.
       [ -f "$FIXTURES/fail_lane_run" ] && { echo 'gh: Server Error (HTTP 500)' >&2; exit 1; }
@@ -646,6 +654,63 @@ def test_a_success_with_every_lane_done_still_publishes_success(runner: Runner) 
     result = _recheck_runner(runner, "completed").run()
     assert result.published is not None
     assert result.published["state"] == "success"
+
+
+def _listing_empty_but_check_runs_name(runner: Runner, run: dict[str, object]) -> None:
+    """The head_sha listing answers no runs while the head's own check-runs name
+    ``run`` through an Actions job's ``details_url``."""
+    (runner.fixtures / "runs.json").write_text(json.dumps({"workflow_runs": []}))
+    checks = json.loads((runner.fixtures / "fork_checks.json").read_text())
+    checks["check_runs"].append(
+        {
+            "id": 900,
+            "name": "test",
+            "status": "in_progress",
+            "conclusion": None,
+            "details_url": (
+                f"https://github.com/kirodotdev/KiroCrew/actions/runs/{run['id']}/job/901"
+            ),
+        }
+    )
+    (runner.fixtures / "fork_checks.json").write_text(json.dumps(checks))
+    (runner.fixtures / f"run_{run['id']}.json").write_text(json.dumps(run))
+
+
+def test_a_lane_restarted_behind_an_empty_listing_still_holds_the_success(
+    runner: Runner,
+) -> None:
+    """An empty head_sha listing is not proof no lane is running: the run its
+    check-runs name answers for it, so the restarted lane holds the publish."""
+    _recheck_runner(runner, "completed")
+    _listing_empty_but_check_runs_name(
+        runner,
+        {
+            "id": 5,
+            "name": "CI",
+            "event": "pull_request",
+            "head_sha": SHA,
+            "path": ".github/workflows/ci.yml",
+            "status": "in_progress",
+            "conclusion": None,
+            "run_started_at": "2026-08-07T19:00:10Z",
+            "head_repository": {"full_name": "kirodotdev/KiroCrew"},
+            "head_branch": "feat/x",
+        },
+    )
+    result = runner.run()
+    assert result.published is not None
+    assert result.published["state"] == "pending"
+    assert "CI" in result.published["description"]
+
+
+def test_a_named_run_that_cannot_be_read_does_not_publish_success(runner: Runner) -> None:
+    _recheck_runner(runner, "completed")
+    _listing_empty_but_check_runs_name(runner, {"id": 5})
+    (runner.fixtures / "run_5.json").unlink()
+    (runner.fixtures / "fail_lane_run").touch()
+    result = runner.run()
+    assert result.published is not None
+    assert result.published["state"] == "pending"
 
 
 # ── The fork re-check ────────────────────────────────────────────────────────

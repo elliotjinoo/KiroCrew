@@ -566,6 +566,35 @@ describe('MarkdownPanel — save and cancel', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 
+  it('calls beforePrompt just before the close guard asks', async () => {
+    const beforePrompt = vi.fn()
+    const onClose = vi.fn()
+    const ref = createRef<MarkdownPanelHandle>()
+    render(<MarkdownPanel embedded ref={ref} filePath="/tmp/notes.md" content="edited body"
+      savedBaseline="disk body" onContentChange={vi.fn()} onSave={vi.fn(async () => {})}
+      onClose={onClose} initialDiffMode={false} />, { wrapper })
+
+    act(() => ref.current!.requestClose({ beforePrompt }))
+
+    await screen.findByRole('dialog')
+    expect(beforePrompt).toHaveBeenCalledOnce()
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('does not call beforePrompt when the close needs no answer', () => {
+    const beforePrompt = vi.fn()
+    const onClose = vi.fn()
+    const ref = createRef<MarkdownPanelHandle>()
+    render(<MarkdownPanel embedded ref={ref} filePath="/tmp/notes.md" content="same body"
+      savedBaseline="same body" onContentChange={vi.fn()} onSave={vi.fn(async () => {})}
+      onClose={onClose} initialDiffMode={false} />, { wrapper })
+
+    act(() => ref.current!.requestClose({ beforePrompt }))
+
+    expect(onClose).toHaveBeenCalledOnce()
+    expect(beforePrompt).not.toHaveBeenCalled()
+  })
+
   /**
    * The navigation reads the target file asynchronously and only replaces this
    * tab once it lands, so the up-front answer can be stale by then — the user

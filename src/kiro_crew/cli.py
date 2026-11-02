@@ -50,9 +50,14 @@ from kiro_crew import _facade_mirror, cli_help, platform_compat, sandbox_launch_
 from kiro_crew.apps import builtins as _builtins_pkg
 from kiro_crew.apps.builtins import BUILTIN_NAMES as _BUILTIN_NAMES
 from kiro_crew.cli_log_files import (  # noqa: F401 -- re-exported for existing callers
+    BOOT_LOG_GENERATIONS,
+    BOOT_LOG_GENERATIONS_MAX_BYTES,
     _AppendOnlyLogFileHandler,
     _open_owner_only,
     _OwnerOnlyRotatingFileHandler,
+    boot_log_dir,
+    boot_log_dir_is_linked,
+    older_boot_logs,
 )
 from kiro_crew.config import KiroCrewConfig, config_dir, ensure_data_home
 from kiro_crew.config.loader import (  # noqa: F401
@@ -1246,7 +1251,10 @@ if TYPE_CHECKING:  # every owner-defined name in _EXPORTS, for type checkers and
         _fd_is_regular_file,
         _fd_targets_file,
         _FdTrackingRotatingFileHandler,
+        _prune_older_boot_logs,
         _redirect_fds_to,
+        _rotate_boot_logs,
+        _rotate_boot_logs_locked,
         _stop_log_queue_listener,
         drain_log_queue_before_hard_exit,
     )

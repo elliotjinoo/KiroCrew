@@ -2566,7 +2566,24 @@ source is most appropriate:
 4. `~/.kiro/crew/gateway.log` for foreground gateways
 
 `gateway.log` itself is opened by `cli_logging._setup_cli_logging`. Only the `gateway`
-command rotates it (2 MiB, three backups). Every other process that logs there —
+command rotates it (2 MiB, three backups). At boot it also moves a non-empty
+`gateway.log` to `gateway.log.prev` (`_rotate_boot_logs`) in two renames, each into a
+name nothing else holds: first the old `.prev` to `logs/gateway-boots/gateway.log.<n>`
+(*n* one more than the largest kept, so order never depends on the clock;
+`cli_log_files.older_boot_logs`), then `gateway.log` to the freed `.prev`. Boot lists
+only that directory, never the data home, so its cost stays fixed. Rotation runs
+before the gateway lock, so it is held under its own lock,
+`gateway.log.rotate.lock`, taken without waiting: a second gateway start that finds
+it held, or a filesystem that cannot lock, skips rotation and appends to
+`gateway.log`, so two starts never write over each other's logs. The operating
+system releases a lock whose holder died, so a stale lock file never blocks boot. Nothing is ever moved back: if either rename fails (a file held open on Windows), boot stops,
+leaves every file where it is and appends to `gateway.log`, so a failed boot loses no
+kept log and never writes over a `gateway.log` another process recreated. Only after
+both succeed are older boots past three, or past 16 MiB in total newest first
+(`BOOT_LOG_GENERATIONS_MAX_BYTES`), deleted; `gateway.log.prev` never is. A run's log
+therefore survives four restarts, and after a successful rotation `gateway.log.prev`
+is the boot just before this one, which the restart relay reads. `kirocrew doctor --bundle` includes every
+kept boot. Every other process that logs there —
 the `mcp-*` stdio servers, `kirocrew chat`, short CLI verbs — writes through
 `_AppendOnlyLogFileHandler`, which opens the file for one record, closes it again
 and never rotates. Windows refuses to rename a file while another process holds

@@ -287,7 +287,7 @@ shipped message:
   | host → frame | `invoke` | `invocation`, point-specific fields (§3) |
   | frame → host | `offer` | `invocation`, `kind` (`copy` or `open`), `value` |
   | host → frame | `offerAck` | `invocation`, `kind` |
-  | host → frame | `offerRefused` | `invocation`, `kind`, `code`: `stale`, `too_large`, `not_allowed` |
+  | host → frame | `offerRefused` | `invocation`, `kind`, `code`: `stale`, `too_large`, `not_allowed`, and for a composer action `not_literal` |
 
 - **Values.** Messages carry JSON-shaped values only (objects, arrays, strings,
   finite numbers, booleans, `null`), nested at most 16 deep; anything else is
@@ -571,9 +571,17 @@ grant, never generic DOM selection.
 to insert and never sends. When it ships: the host captures a draft revision and
 selection at invocation; if the draft changed before the insert offer arrives,
 the host shows the text with an **Insert anyway** button instead of inserting.
-Inserted text is marked literal: on Send it is not parsed for slash commands,
-file mentions or internal attachment tokens. The app never sees the draft in this
-point; sharing a selected part of the draft is a later, separate grant.
+An app can only insert text with nothing to resolve. The host refuses an offer
+(`not_literal`, nothing inserted) whose text holds anything the composer or the
+gateway would resolve: a line starting with `/`, an `@` or `$` token, the
+composer's paste, attachment or folder marker syntax, or a local image path,
+whether in the text itself, made with the draft around the caret, or as the
+argument of a command line the text would join. Accepted text is ordinary draft text, so it needs no mark, and what the
+person types next is their own. (Two earlier designs marked the text instead:
+invisible in-text markers, which ordinary editing broke, and a whole-message
+literal flag, which every draft, queue and recovery path had to carry and kept
+dropping.) The app never sees the draft in this point; sharing a selected part of
+the draft is a later, separate grant.
 
 **`linkOpen`.** A plain click on a claimed `https:` link opens the app's frame in
 a panel or dialog with that URL (per §4's URL rules). Modifier clicks and the

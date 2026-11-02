@@ -6584,7 +6584,18 @@
       "attachment_removed": "{{file}} সংযুক্তি থেকে সরানো হয়েছে",
       "attachment_restored": "{{file}} সংযুক্ত করা হয়েছে",
       "trusted_command_until": "«{{cmd}}» {{time}} পর্যন্ত বিশ্বস্ত, তারপর আবার জিজ্ঞাসা করবে",
-      "trusted_base_until": "যেকোনো «{{base}}» কমান্ড {{time}} পর্যন্ত বিশ্বস্ত, তারপর আবার জিজ্ঞাসা করবে"
+      "trusted_base_until": "যেকোনো «{{base}}» কমান্ড {{time}} পর্যন্ত বিশ্বস্ত, তারপর আবার জিজ্ঞাসা করবে",
+      "composer_action_dialog": "{{title}}, {{app}} থেকে",
+      "composer_action_close": "বন্ধ করো",
+      "composer_action_draft_changed": "{{app}} কাজ করার সময় তোমার খসড়া বদলেছে। তবুও এই লেখা যোগ করবে?",
+      "composer_action_discard": "বাদ দাও",
+      "composer_action_insert_anyway": "তবুও যোগ করো",
+      "composer_action_timed_out": "{{app}} খুব বেশি সময় নিয়েছে, তাই থামানো হয়েছে। কিছুই যোগ হয়নি।",
+      "composer_action_app_error": "{{app}}-এ ত্রুটি হয়েছে। কিছুই যোগ হয়নি।",
+      "composer_action_revoked": "{{app}} বন্ধ করা হয়েছে। কিছুই যোগ হয়নি।",
+      "composer_action_failed": "{{app}} সাড়া দেয়নি। কিছুই যোগ হয়নি।",
+      "composer_action_not_literal": "এখানে {{app}}-এর লেখাটি কমান্ড, উল্লেখ বা ফাইল হিসেবে পড়া হতো। কিছুই যোগ হয়নি।",
+      "composer_action_footer": "{{app}} তোমার খসড়া দেখতে পায় না। এর লেখা যেমন আছে তেমনই যোগ হয়, আর পাঠাবে কিনা তুমি ঠিক করো।"
     },
     "chatPane": {
       "agent_list": "এজেন্ট তালিকা",
@@ -10921,7 +10932,8 @@
       "grants_reconsent_link_hosts": "লিংক হোস্ট: চ্যাট বার্তায় এই সাইটগুলোর লিংক অ্যাপের হোভার কার্ডকে দেখতে দেয়।",
       "grants_reconsent_link_patterns": "টেক্সট প্যাটার্ন: চ্যাটের যে লেখা এই প্যাটার্নগুলোর সাথে মেলে, তা অ্যাপের হোভার কার্ডকে দেখতে দেয়।",
       "grants_reconsent_link_full_url": "পুরো লিংক ঠিকানা: অ্যাপের হোভার কার্ড লিংকের ? বা # এর পরের অংশও দেখবে, যেখানে সাইন-ইন কোড থাকতে পারে।",
-      "grants_approved": "অনুমোদিত: {{entries}}। অ্যাপটি এখন এগুলো ব্যবহার করতে পারে।"
+      "grants_approved": "অনুমোদিত: {{entries}}। অ্যাপটি এখন এগুলো ব্যবহার করতে পারে।",
+      "grants_reconsent_composer_actions": "কম্পোজার বোতাম: অ্যাপকে কম্পোজারের + মেনুতে এই বোতামগুলো যোগ করতে দেয়। ক্লিক করলে অ্যাপের লেখা তোমার খসড়ায় যোগ হয়; অ্যাপ খসড়া দেখতে বা পাঠাতে পারে না।"
     },
     "appPage": {
       "loading_app": "অ্যাপ লোড হচ্ছে…",

@@ -763,6 +763,20 @@ _BOOTSTRAP = _RUNTIME + _INVOCATION + _LINK_PREVIEW_POINT
 # Registered points. A new frame-backed point adds its resolver and script here.
 register_frame_point("linkPreviews", _resolve_link_preview, _LINK_PREVIEW_POINT)
 
+from kiro_crew.apps import composer_action_frame as _composer_action_frame  # noqa: E402
+
+
+def _resolve_composer_action(name: str, action_id: str) -> FrameEntry | None:
+    # Through the module, so a test that stands in for the resolver is what every route reads.
+    return _composer_action_frame.resolve_composer_action(name, action_id)
+
+
+register_frame_point(
+    _composer_action_frame.COMPOSER_ACTION_POINT,
+    _resolve_composer_action,
+    _composer_action_frame.COMPOSER_ACTION_SCRIPT,
+)
+
 
 __all__: list[str] = [
     "CAPABILITY_HEADER",

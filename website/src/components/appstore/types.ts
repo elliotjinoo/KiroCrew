@@ -1,5 +1,12 @@
 import { i18nT } from '../../i18n/t'
 
+/** An app row's `composerActionGrant`: the approved composer buttons, and the ids
+ *  of the ones an update added that wait (`apps/composer_action_grants.py`). */
+export interface ComposerActionGrantRow {
+  actions?: Array<{ id?: string; title?: string; icon?: string; maxChars?: number }>
+  staged?: string[]
+}
+
 /** An app row's `linkPreviewGrant`: approved hosts and text patterns, and the ones held back. */
 export interface LinkPreviewGrantRow {
   hosts?: string[]
@@ -94,6 +101,7 @@ export type InstalledApp = {
   approvedGrants?: { api?: string[]; events?: string[] }
   /** Approved link-preview hosts and text patterns, and the ones an update holds back. */
   linkPreviewGrant?: LinkPreviewGrantRow
+  composerActionGrant?: ComposerActionGrantRow
   installedAt: string
   source?: string
   origin?: string     // "builtin" | "registry" | "local" | "external"

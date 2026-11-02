@@ -6463,7 +6463,18 @@
       "attachment_removed": "{{file}} を添付から削除しました",
       "attachment_restored": "{{file}} を添付しました",
       "trusted_command_until": "「{{cmd}}」を {{time}} まで信頼します。その後は再度確認します",
-      "trusted_base_until": "任意の「{{base}}」コマンドを {{time}} まで信頼します。その後は再度確認します"
+      "trusted_base_until": "任意の「{{base}}」コマンドを {{time}} まで信頼します。その後は再度確認します",
+      "composer_action_dialog": "{{title}}（{{app}}）",
+      "composer_action_close": "閉じる",
+      "composer_action_draft_changed": "{{app}} の処理中に下書きが変更されました。それでもこのテキストを挿入しますか？",
+      "composer_action_discard": "破棄",
+      "composer_action_insert_anyway": "それでも挿入",
+      "composer_action_timed_out": "{{app}} の処理に時間がかかりすぎたため停止しました。何も挿入されていません。",
+      "composer_action_app_error": "{{app}} でエラーが発生しました。何も挿入されていません。",
+      "composer_action_revoked": "{{app}} はオフになりました。何も挿入されていません。",
+      "composer_action_failed": "{{app}} が応答しませんでした。何も挿入されていません。",
+      "composer_action_not_literal": "ここでは {{app}} のテキストがコマンド、メンション、またはファイルとして読まれます。何も挿入されていません。",
+      "composer_action_footer": "{{app}} は下書きを見られません。テキストはそのまま挿入され、送信するかどうかはあなたが決めます。"
     },
     "chatPane": {
       "agent_list": "エージェントリスト",
@@ -10755,7 +10766,8 @@
       "grants_reconsent_link_hosts": "リンクのホスト: チャットメッセージ内のこれらのサイトへのリンクを、アプリのホバーカードが見られるようにします。",
       "grants_reconsent_link_patterns": "テキストパターン: これらのパターンに一致するチャットのテキストを、アプリのホバーカードが見られるようにします。",
       "grants_reconsent_link_full_url": "リンクの完全なアドレス: アプリのホバーカードは、リンクの ? や # 以降の部分も見られます。ここにはサインイン用のコードが含まれることがあります。",
-      "grants_approved": "承認しました: {{entries}}。アプリは今から使用できます。"
+      "grants_approved": "承認しました: {{entries}}。アプリは今から使用できます。",
+      "grants_reconsent_composer_actions": "入力欄ボタン：入力欄の + メニューにこれらのボタンを追加できます。クリックするとアプリのテキストが下書きに挿入されます。アプリは下書きを見ることも送信することもできません。"
     },
     "appPage": {
       "loading_app": "アプリを読み込み中…",

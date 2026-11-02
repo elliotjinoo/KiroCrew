@@ -6584,7 +6584,18 @@
       "attachment_removed": "{{file}} aus Anhängen entfernt",
       "attachment_restored": "{{file}} angehängt",
       "trusted_command_until": "„{{cmd}}“ ist bis {{time}} vertrauenswürdig, danach wird erneut gefragt",
-      "trusted_base_until": "Jedem „{{base}}“-Befehl wird bis {{time}} vertraut, danach wird erneut gefragt"
+      "trusted_base_until": "Jedem „{{base}}“-Befehl wird bis {{time}} vertraut, danach wird erneut gefragt",
+      "composer_action_dialog": "{{title}}, von {{app}}",
+      "composer_action_close": "Schließen",
+      "composer_action_draft_changed": "Dein Entwurf hat sich geändert, während {{app}} gearbeitet hat. Diesen Text trotzdem einfügen?",
+      "composer_action_discard": "Verwerfen",
+      "composer_action_insert_anyway": "Trotzdem einfügen",
+      "composer_action_timed_out": "{{app}} hat zu lange gebraucht und wurde gestoppt. Nichts wurde eingefügt.",
+      "composer_action_app_error": "{{app}} hatte einen Fehler. Nichts wurde eingefügt.",
+      "composer_action_revoked": "{{app}} wurde ausgeschaltet. Nichts wurde eingefügt.",
+      "composer_action_failed": "{{app}} hat nicht geantwortet. Nichts wurde eingefügt.",
+      "composer_action_not_literal": "Der Text von {{app}} würde hier als Befehl, Erwähnung oder Datei gelesen. Nichts wurde eingefügt.",
+      "composer_action_footer": "{{app}} kann deinen Entwurf nicht sehen. Sein Text wird wörtlich eingefügt, und du entscheidest, ob du ihn sendest."
     },
     "chatPane": {
       "agent_list": "Agenten-Liste",
@@ -10921,7 +10932,8 @@
       "grants_reconsent_link_hosts": "Link-Hosts: erlaubt den Hover-Karten der App, Links zu diesen Seiten in Chat-Nachrichten zu sehen.",
       "grants_reconsent_link_patterns": "Textmuster: erlaubt den Hover-Karten der App, Chat-Text zu sehen, auf den diese Muster passen.",
       "grants_reconsent_link_full_url": "Vollständige Linkadressen: Die Hover-Karten der App sehen auch den Teil eines Links nach ? oder #, der einen Anmeldecode enthalten kann.",
-      "grants_approved": "Genehmigt: {{entries}}. Die App kann sie jetzt nutzen."
+      "grants_approved": "Genehmigt: {{entries}}. Die App kann sie jetzt nutzen.",
+      "grants_reconsent_composer_actions": "Eingabefeld-Schaltflächen: Die App darf diese Schaltflächen zum +-Menü des Eingabefelds hinzufügen. Ein Klick fügt den Text der App in deinen Entwurf ein; die App kann den Entwurf weder sehen noch senden."
     },
     "appPage": {
       "loading_app": "App wird geladen…",

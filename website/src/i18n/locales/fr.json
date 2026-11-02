@@ -6705,7 +6705,18 @@
       "attachment_removed": "{{file}} retiré des pièces jointes",
       "attachment_restored": "{{file}} joint",
       "trusted_command_until": "Confiance accordée à « {{cmd}} » jusqu’à {{time}}, puis la demande réapparaît",
-      "trusted_base_until": "Confiance accordée à toute commande « {{base}} » jusqu’à {{time}}, puis la demande réapparaît"
+      "trusted_base_until": "Confiance accordée à toute commande « {{base}} » jusqu’à {{time}}, puis la demande réapparaît",
+      "composer_action_dialog": "{{title}}, de {{app}}",
+      "composer_action_close": "Fermer",
+      "composer_action_draft_changed": "Ton brouillon a changé pendant que {{app}} travaillait. Insérer ce texte quand même ?",
+      "composer_action_discard": "Ignorer",
+      "composer_action_insert_anyway": "Insérer quand même",
+      "composer_action_timed_out": "{{app}} a mis trop de temps et a été arrêtée. Rien n'a été inséré.",
+      "composer_action_app_error": "{{app}} a rencontré une erreur. Rien n'a été inséré.",
+      "composer_action_revoked": "{{app}} a été désactivée. Rien n'a été inséré.",
+      "composer_action_failed": "{{app}} n'a pas répondu. Rien n'a été inséré.",
+      "composer_action_not_literal": "Ici, le texte de {{app}} serait lu comme une commande, une mention ou un fichier. Rien n'a été inséré.",
+      "composer_action_footer": "{{app}} ne voit pas ton brouillon. Son texte est inséré tel quel, et c'est toi qui choisis de l'envoyer."
     },
     "chatPane": {
       "agent_list": "Liste des agents",
@@ -11087,7 +11098,8 @@
       "grants_reconsent_link_hosts": "Hôtes de liens : permet aux cartes de survol de l’app de voir les liens vers ces sites dans les messages du chat.",
       "grants_reconsent_link_patterns": "Motifs de texte : permet aux cartes de survol de l’app de voir le texte du chat qui correspond à ces motifs.",
       "grants_reconsent_link_full_url": "Adresses de lien complètes : les cartes de survol de l’app voient aussi la partie d’un lien après « ? » ou « # », qui peut contenir un code de connexion.",
-      "grants_approved": "Approuvées : {{entries}}. L’app peut les utiliser dès maintenant."
+      "grants_approved": "Approuvées : {{entries}}. L’app peut les utiliser dès maintenant.",
+      "grants_reconsent_composer_actions": "Boutons de l'éditeur : permet à l'app d'ajouter ces boutons au menu + de l'éditeur. Un clic insère le texte de l'app dans ton brouillon ; l'app ne peut ni voir le brouillon ni l'envoyer."
     },
     "appPage": {
       "loading_app": "Chargement de l'application…",

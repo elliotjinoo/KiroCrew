@@ -6463,7 +6463,18 @@
       "attachment_removed": "已从附件中移除 {{file}}",
       "attachment_restored": "已附加 {{file}}",
       "trusted_command_until": "已信任“{{cmd}}”至 {{time}}，之后会再次询问",
-      "trusted_base_until": "已信任任意“{{base}}”命令至 {{time}}，之后会再次询问"
+      "trusted_base_until": "已信任任意“{{base}}”命令至 {{time}}，之后会再次询问",
+      "composer_action_dialog": "{{title}}，来自 {{app}}",
+      "composer_action_close": "关闭",
+      "composer_action_draft_changed": "{{app}} 处理期间你的草稿有改动。仍要插入这段文字吗？",
+      "composer_action_discard": "放弃",
+      "composer_action_insert_anyway": "仍然插入",
+      "composer_action_timed_out": "{{app}} 用时太久，已停止。没有插入任何内容。",
+      "composer_action_app_error": "{{app}} 出错了。没有插入任何内容。",
+      "composer_action_revoked": "{{app}} 已被关闭。没有插入任何内容。",
+      "composer_action_failed": "{{app}} 没有响应。没有插入任何内容。",
+      "composer_action_not_literal": "{{app}} 的文本在这里会被读作命令、提及或文件。没有插入任何内容。",
+      "composer_action_footer": "{{app}} 看不到你的草稿。它的文字按原样插入，是否发送由你决定。"
     },
     "chatPane": {
       "agent_list": "代理列表",
@@ -10755,7 +10766,8 @@
       "grants_reconsent_link_hosts": "链接主机：允许应用的悬停卡片看到聊天消息中指向这些站点的链接。",
       "grants_reconsent_link_patterns": "文本模式：允许应用的悬停卡片看到聊天中与这些模式匹配的文本。",
       "grants_reconsent_link_full_url": "完整链接地址：应用的悬停卡片还会看到链接中 ? 或 # 之后的部分，其中可能包含登录代码。",
-      "grants_approved": "已批准：{{entries}}。应用现在可以使用它们。"
+      "grants_approved": "已批准：{{entries}}。应用现在可以使用它们。",
+      "grants_reconsent_composer_actions": "输入框按钮：允许应用在输入框的 + 菜单中添加这些按钮。点击后会把应用的文字插入你的草稿；应用看不到草稿，也不能发送。"
     },
     "appPage": {
       "loading_app": "加载应用…",

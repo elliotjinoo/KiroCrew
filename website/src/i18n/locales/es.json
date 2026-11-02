@@ -6705,7 +6705,18 @@
       "attachment_removed": "{{file}} eliminado de los adjuntos",
       "attachment_restored": "{{file}} adjuntado",
       "trusted_command_until": "«{{cmd}}» es de confianza hasta las {{time}}; después vuelve a preguntar",
-      "trusted_base_until": "Cualquier comando «{{base}}» es de confianza hasta las {{time}}; después vuelve a preguntar"
+      "trusted_base_until": "Cualquier comando «{{base}}» es de confianza hasta las {{time}}; después vuelve a preguntar",
+      "composer_action_dialog": "{{title}}, de {{app}}",
+      "composer_action_close": "Cerrar",
+      "composer_action_draft_changed": "Tu borrador cambió mientras {{app}} trabajaba. ¿Insertar este texto de todos modos?",
+      "composer_action_discard": "Descartar",
+      "composer_action_insert_anyway": "Insertar de todos modos",
+      "composer_action_timed_out": "{{app}} tardó demasiado y se detuvo. No se insertó nada.",
+      "composer_action_app_error": "{{app}} tuvo un error. No se insertó nada.",
+      "composer_action_revoked": "{{app}} se desactivó. No se insertó nada.",
+      "composer_action_failed": "{{app}} no respondió. No se insertó nada.",
+      "composer_action_not_literal": "Aquí el texto de {{app}} se leería como un comando, una mención o un archivo. No se insertó nada.",
+      "composer_action_footer": "{{app}} no puede ver tu borrador. Su texto se inserta tal cual y tú decides si lo envías."
     },
     "chatPane": {
       "agent_list": "Lista de agentes",
@@ -11087,7 +11098,8 @@
       "grants_reconsent_link_hosts": "Hosts de enlaces: permite que las tarjetas de la app vean enlaces a estos sitios en los mensajes del chat.",
       "grants_reconsent_link_patterns": "Patrones de texto: permite que las tarjetas de la app vean el texto del chat que coincide con estos patrones.",
       "grants_reconsent_link_full_url": "Direcciones de enlace completas: las tarjetas de la app también ven la parte de un enlace tras ? o #, que puede contener un código de inicio de sesión.",
-      "grants_approved": "Aprobados: {{entries}}. La app ya puede usarlos."
+      "grants_approved": "Aprobados: {{entries}}. La app ya puede usarlos.",
+      "grants_reconsent_composer_actions": "Botones del editor: permite que la app añada estos botones al menú + del editor. Un clic inserta el texto de la app en tu borrador; la app no puede ver el borrador ni enviarlo."
     },
     "appPage": {
       "loading_app": "Cargando la app…",

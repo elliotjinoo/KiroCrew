@@ -4269,6 +4269,89 @@ owner each:
 Writers: `apps/app_frame.py`, `apps/app_hosts.py`, `apps/point_grants.py`,
 `website/src/appFrame/*`.
 
+## 18c. A composer action inserts only text with nothing to resolve; the app sees nothing and sends nothing
+
+`contributes.composerActions[]` (at most 2 per app: `id`, `title` of at most 40
+UTF-16 units, optional glyph `icon`, `entry`, `maxChars` 1 to 32,000, optional
+`popover.width` 200 to 480 and `popover.maxHeight` 120 to 600; a field with the wrong
+type or an unknown field is refused, never coerced) puts one row per action in the
+composer's "+" menu, after the host's own shortcuts and naming its app. It is a
+click-driven point on the shared frame contract (§18b); the RFC is
+`docs/request-for-change/rfc-app-contribution-points.md` §6.
+
+- **Point.** `composerActions`, registered at the bottom of `apps/app_frame.py`
+  with `composer_action_frame.resolve_composer_action` and
+  `COMPOSER_ACTION_SCRIPT`. The resolver answers only for an enabled app's declared
+  action whose grant the owner approved, so a revoked action or a disabled app
+  stops its frame, its renewal and its next fetch.
+- **What the frame gets.** `init` and one `composer.invoke { invocationId,
+  deadlineMs }`. Nothing from the composer: not the draft, the selection, the
+  session or the agent. The script hands the module a frozen `call`
+  (`invocationId`, `deadlineMs`, `signal`, `insert`, `resize`, `close`, `error`),
+  runs one invocation at a time, and turns a returned string into `insert`.
+- **Host** (`website/src/composerActions/composerActionHost.ts`, on `HostInvocation`
+  with `allowedKinds` `insert` only). The frame must say `ready` within 5 s; the
+  invocation has a 2-minute deadline. An offer over the action's `maxChars` is
+  answered `too_large`, one that is empty after `displaySafe` `not_allowed`; an
+  accepted one is acked and `settle()`d, so no `invoke.cancel` follows. A message
+  over `MAX_HOST_MESSAGE_BYTES`, past the burst allowance, or a second `load` tears
+  the frame down.
+- **Insert.** The text goes into the draft as plain, editable text at the
+  selection captured at the click (`composerActions/literalInsert.ts`). The draft
+  revision is the draft text and its block ids at the click; if either changed
+  before the offer, the text is shown with **Insert anyway** (at the caret now) and
+  **Discard**, and is never written over the change. A session switch or a revoked
+  action cancels the invocation.
+- **An app can only insert text with nothing to resolve.** Before inserting, the
+  host refuses an offer the composer or the gateway would read as more than text,
+  answering `result.error { code: "not_literal" }` and inserting nothing
+  (`composerActions/literalInsert.ts`, called from `composerActions.tsx`). Each rule
+  is a superset of one reader, because the gateway's readers are Python and the
+  client cannot call them:
+  - a line whose first character other than JS `\s` or U+0085 is `/`: the
+    gateway's `message.split()[0]` and the client's `raw.trim()` slash readers
+    (`displaySafe` already drops U+001C to U+001F);
+  - `@` not straight after a letter or digit: file and folder mentions
+    (`fileTokens.leadingMentionBoundary`), a leading `@prompt` or `@knowledge`;
+  - `$` before a letter or digit, after anything: the gateway's `$skill` reader
+    (`skills._DOLLAR_SKILL_PATTERN`) is narrower;
+  - the paste token (`pasteTokens.PASTE_TOKEN_REGEX`) and the attachment and folder
+    markers (`fileTokens.parseFiles`, `parseDirs`);
+  - a path separator followed on the same line by an `IMG_EXT` suffix: every match
+    of `kiro_crew.image_refs._PATH_RE` has that shape.
+
+  `composerWouldResolve` tests the offered text alone, at offer time.
+  `insertWouldResolve` tests it in place: it counts each reader's matches in the
+  draft with the selection removed and in the draft after the insert, and
+  refuses when any count grows, so text that completes a path the person typed, or
+  puts a marker in front of one, is refused too. Text that would join a line whose
+  first non-blank character is `/` or `@` is refused as well, since it would be read
+  as that command's argument (`/goal clear`, `/agent <name>`, `/side`). Counting per
+  reader keeps a
+  construct the insert makes from being hidden by one it moves. **Insert anyway**
+  runs the same check at the caret then; the frame is already done by that point,
+  so a refusal ends the popover with `composer_action_not_literal`. Accepted text
+  is ordinary draft text: it carries no mark, nothing in it resolves, and what the
+  person types next is their own. The text goes in through the composer's own
+  splice (`lib/dictationText.spliceDictationText`, as dictation does), which spaces
+  it from a word it would touch. The composer never sends on the app's behalf.
+- **Grant.** One staged family, `composerActions`, entry `<id>:insert`
+  (`apps/composer_action_grants.py`), registered in `apps/point_grants.py`. A new id
+  on update is held back until the owner approves it on the App Detail page; a
+  title or icon change keeps the approval. The app row carries
+  `composerActionGrant { actions, staged }`, and the dashboard renders only
+  `actions`.
+- **Hosts.** Only the main chat composer passes `composerActions`
+  (`ComposerDockView`). On a touch host whose "+" is a bare file picker (`directFilePicker`)
+  the rows are items of the touch overflow menu instead (`composer-more-trigger`,
+  `ComposerActionMenuItems`). A failed or stopped action is shown through
+  `ErrorNotice` with no agent hand-off, because the draft below it is unsaved; the
+  popover's window Escape listener closes it when the local Crew is hidden.
+
+Writers: `apps/composer_action_frame.py`, `apps/composer_action_grants.py`,
+`apps/manifest_contributes.py`, `website/src/composerActions/*`,
+`website/src/components/chat-input/composerActions.tsx`.
+
 ## 19. Spec Builder's backend is composed by lifecycle owner
 
 Spec Builder's backend carries more orchestration than a typical app: agent turns

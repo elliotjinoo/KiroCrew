@@ -40,6 +40,9 @@ from kiro_crew.apps.manifest_containment import (  # noqa: F401
 from kiro_crew.apps.manifest_contributes import (  # noqa: F401
     _COMMAND_AGENT_RE,
     _COMMAND_SLUG_RE,
+    _COMPOSER_ACTION_ICON_RE,
+    _COMPOSER_ACTION_KEYS,
+    _COMPOSER_ACTION_POPOVER,
     _FILE_MENU_KINDS,
     _HOST_RE,
     _MAX_ARGUMENT_HOSTS,
@@ -58,12 +61,16 @@ from kiro_crew.apps.manifest_contributes import (  # noqa: F401
     _TEXT_PATTERN_KEYS,
     ARGUMENT_TOKEN,
     FILE_MENU_SURFACES,
+    MAX_COMPOSER_ACTION_CHARS,
+    MAX_COMPOSER_ACTION_TITLE,
+    MAX_COMPOSER_ACTIONS_PER_APP,
     MAX_LINK_PREVIEW_TEXT_PATTERN_LEN,
     MAX_LINK_PREVIEW_TEXT_PATTERNS,
     MAX_LINK_PREVIEWS_PER_APP,
     MAX_SESSION_CONTROLS_PER_APP,
     CommandArgument,
     CommandContribution,
+    ComposerActionConfig,
     Contributes,
     FileMenuItemConfig,
     FileMenuWhen,
@@ -520,6 +527,12 @@ class AppManifest:
             refusal = path_refusal(preview.entry)
             if refusal:
                 report_path(refusal, f"contributes.linkPreviews entry {refusal}: {preview.entry!r}")
+        for action in self.contributes.composerActions:
+            refusal = path_refusal(action.entry)
+            if refusal:
+                report_path(
+                    refusal, f"contributes.composerActions entry {refusal}: {action.entry!r}"
+                )
 
         # UI page validation
         for page in self.ui.pages:
@@ -757,6 +770,7 @@ class AppManifest:
             # A link-preview `entry` is an ESM module the dashboard imports and runs
             # in its own origin, like a panel tab's: same reason to sign it.
             or self.contributes.linkPreviews
+            or self.contributes.composerActions
         ):
             # A contributed command's `prompt` is sent to an agent with tools as if
             # the reader typed it, and `autoSend` fires it without a further

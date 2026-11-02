@@ -19,6 +19,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
+from kiro_crew.apps.composer_action_grants import composer_action_grant_row
 from kiro_crew.apps.execution import shipped_builtin_app_root
 from kiro_crew.apps.link_preview_grants import link_preview_grant_row
 from kiro_crew.apps.manager_builtins import detect_orphaned_builtins
@@ -396,6 +397,7 @@ def list_apps() -> list[dict[str, Any]]:
             **meta.to_dict(),
             **_approved_grants_row(entry.name),
             **link_preview_grant_row(entry.name, manifest_data),
+            **composer_action_grant_row(entry.name, manifest_data),
             "manifest": manifest_data,
         }
         # Include migratedTo if non-empty
@@ -432,6 +434,7 @@ def get_app(name: str) -> dict[str, Any] | None:
         **meta.to_dict(),
         **_approved_grants_row(name),
         **link_preview_grant_row(name, manifest_data),
+        **composer_action_grant_row(name, manifest_data),
         "manifest": manifest_data,
     }
 

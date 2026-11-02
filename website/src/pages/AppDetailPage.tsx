@@ -47,6 +47,7 @@ import { classifyManifestArt, installedArt, installedArtList, installedArtListAl
 import { fmtDateNumeric, fmtCompact, fmtNumber } from '../i18n/format'
 import { HeroBanner, ScreenshotGallery } from './AppDetailPageArt'
 import type { AppInfo, NormalizedRegistryEntry, RegistryEntry } from './appDetailPageTypes'
+import { actionGrant } from '../composerActions/composerActionRegistry'
 // The page's parts live in sibling owners that never import this module:
 // `AppDetailPageArt.tsx` (the hero banner and the screenshot gallery, each with
 // its local-art second chance) and `appDetailPageTypes.ts` (the page's view
@@ -91,7 +92,9 @@ export default function AppDetailPage() {
   const stagedLinkHosts = app?.linkPreviewGrant?.stagedHosts || []
   const stagedLinkPatterns = app?.linkPreviewGrant?.stagedTextPatterns || []
   const stagedFullUrl = app?.linkPreviewGrant?.stagedFullUrl === true
-  const hasStagedGrants = stagedApi.length + stagedEvents.length + stagedLinkHosts.length + stagedLinkPatterns.length > 0 || stagedFullUrl
+  // A composer button an update added waits the same way.
+  const stagedComposerActions = app?.composerActionGrant?.staged || []
+  const hasStagedGrants = stagedApi.length + stagedEvents.length + stagedLinkHosts.length + stagedLinkPatterns.length + stagedComposerActions.length > 0 || stagedFullUrl
   // Shown where the notice was once the owner approves, so the moment is confirmed.
   const [grantsApprovedMsg, setGrantsApprovedMsg] = useState('')
   const enableLabel = app?.sessionApprovalConsentPending
@@ -266,6 +269,7 @@ export default function AppDetailPage() {
             sessionApprovalConsentPending: installed.sessionApprovalConsentPending,
             approvedGrants: installed.approvedGrants,
             linkPreviewGrant: installed.linkPreviewGrant,
+            composerActionGrant: installed.composerActionGrant,
             managed: installed.managed,
             source: installed.source,
             installedAt: installed.installedAt,
@@ -392,6 +396,7 @@ export default function AppDetailPage() {
             sessionApprovalConsentPending: installed.sessionApprovalConsentPending,
             approvedGrants: installed.approvedGrants,
             linkPreviewGrant: installed.linkPreviewGrant,
+            composerActionGrant: installed.composerActionGrant,
             managed: installed.managed,
             source: installed.source,
             installedAt: installed.installedAt,
@@ -983,6 +988,16 @@ export default function AppDetailPage() {
               {stagedFullUrl && (
                 <div className="text-[13px]">{i18nT('pages.appDetailPage.grants_reconsent_link_full_url')}</div>
               )}
+              {stagedComposerActions.length > 0 && (
+                <div>
+                  <div className="text-[13px]">{i18nT('pages.appDetailPage.grants_reconsent_composer_actions')}</div>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {stagedComposerActions.map(id => (
+                      <code key={id} className="bg-bg-elevated border border-border px-1.5 py-0.5 rounded text-[11px] text-text">{id}</code>
+                    ))}
+                  </div>
+                </div>
+              )}
               {app.enabled && (
                 <span className="text-[13px] text-muted">{i18nT('pages.appDetailPage.grants_reconsent_undo', { name: appDisplayName(app) })}</span>
               )}
@@ -995,7 +1010,7 @@ export default function AppDetailPage() {
               primary
               onClick={async () => {
                 startAction('approve_grants')
-                const approved = [...stagedApi, ...stagedEvents, ...stagedLinkHosts, ...stagedLinkPatterns, ...(stagedFullUrl ? ['fullUrl'] : [])].join(', ')
+                const approved = [...stagedApi, ...stagedEvents, ...stagedLinkHosts, ...stagedLinkPatterns, ...(stagedFullUrl ? ['fullUrl'] : []), ...stagedComposerActions].join(', ')
                 try {
                   await api.enableApp(app.name, false, {
                     api: stagedApi,
@@ -1003,6 +1018,7 @@ export default function AppDetailPage() {
                     linkPreviewHosts: stagedLinkHosts,
                     linkPreviewTextPatterns: stagedLinkPatterns,
                     linkPreviewFullUrl: stagedFullUrl ? ['fullUrl'] : [],
+                    composerActions: stagedComposerActions.map(actionGrant),
                   })
                   setGrantsApprovedMsg(i18nT('pages.appDetailPage.grants_approved', { entries: approved }))
                   await load()

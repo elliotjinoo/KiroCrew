@@ -85,6 +85,13 @@ from kiro_crew.apps.link_preview_grants import (  # noqa: E402
 
 register_point_grants(LINK_PREVIEW_GRANT_FAMILIES, link_preview_grant_entries)
 
+from kiro_crew.apps.composer_action_grants import (  # noqa: E402
+    COMPOSER_ACTION_GRANT_FAMILIES,
+    composer_action_grant_entries,
+)
+
+register_point_grants(COMPOSER_ACTION_GRANT_FAMILIES, composer_action_grant_entries)
+
 
 __all__ = [
     "EntriesFn",

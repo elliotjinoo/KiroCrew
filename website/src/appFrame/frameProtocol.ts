@@ -78,7 +78,9 @@ export const MAX_OFFER_URL = 2048
 
 export type OfferKind = 'copy' | 'open' | 'insert'
 /** Why the host refused an offer, as `result.error { code }`. */
-export type OfferRefusal = 'stale' | 'too_large' | 'not_allowed'
+/** `not_literal`: composer actions only, the text holds something the composer
+ *  would resolve (`composerActions/literalInsert.ts`). */
+export type OfferRefusal = 'stale' | 'too_large' | 'not_allowed' | 'not_literal'
 
 /**
  * Frame-to-host messages of the invocation contract, plus the lifecycle ones
